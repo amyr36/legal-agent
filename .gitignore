@@ -1,6 +1,329 @@
+<<<<<<< HEAD
 .env
 .venv/
 __pycache__/
 *.py[cod]
 *.db
 .pytest_cache/
+=======
+# =========================================================
+# OS / IDE
+# =========================================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+
+# =========================================================
+# Environment / Secrets
+# =========================================================
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+secrets/
+credentials/
+*.secret
+
+
+# =========================================================
+# Python
+# =========================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.so
+
+# Python distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Packaging
+pip-wheel-metadata/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Type checking
+.pyre/
+.pytype/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python tools
+.pytest_cache/
+.tox/
+.nox/
+
+
+# =========================================================
+# FastAPI / Application
+# =========================================================
+
+*.log
+logs/
+
+# Local runtime files
+*.pid
+*.pid.lock
+
+# Local SQLite databases (if ever used for development)
+*.sqlite
+*.sqlite3
+*.db
+
+
+# =========================================================
+# Uploaded / Generated Files
+# =========================================================
+
+# User uploaded documents
+storage/*
+!storage/.gitkeep
+
+# Extracted/generated files
+uploads/
+media/
+tmp/
+temp/
+
+# Generated reports
+reports/
+generated/
+
+# Don't commit user documents
+*.pdf
+*.docx
+*.txt
+
+
+# =========================================================
+# PostgreSQL / Database
+# =========================================================
+
+# Local database dumps
+*.sql
+*.dump
+*.backup
+
+# PostgreSQL local data
+postgres_data/
+postgres_data/*
+pgdata/
+pgdata/*
+
+
+# =========================================================
+# Alembic
+# =========================================================
+
+# NOTE:
+# Do NOT ignore migrations/.
+# Alembic migration files should be committed.
+
+# alembic local cache
+.alembic/
+
+
+# =========================================================
+# Docker
+# =========================================================
+
+# Docker override files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Docker environment files
+.docker/
+
+# Docker logs
+docker-logs/
+
+# Local Docker volumes
+docker-volumes/
+
+
+# =========================================================
+# Node / Frontend
+# =========================================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.npm/
+.yarn/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+
+# Vite
+.vite/
+
+# React
+.cache/
+
+# Environment
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+
+# =========================================================
+# Frontend Testing
+# =========================================================
+
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+
+# =========================================================
+# Logs
+# =========================================================
+
+*.log
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# =========================================================
+# Temporary Files
+# =========================================================
+
+*.tmp
+*.temp
+*.swp
+*.swo
+
+.cache/
+.cache-loader/
+.parcel-cache/
+
+
+# =========================================================
+# Backup Files
+# =========================================================
+
+*.bak
+*.backup
+*.old
+*.orig
+
+
+# =========================================================
+# Security / Local Certificates
+# =========================================================
+
+*.pem
+*.key
+*.csr
+*.p12
+*.pfx
+
+
+# =========================================================
+# Generated Documentation
+# =========================================================
+
+site/
+docs/_build/
+
+
+# =========================================================
+# Local Development
+# =========================================================
+
+local/
+.local/
+data/
+datasets/
+
+
+# =========================================================
+# Terraform (if added later)
+# =========================================================
+
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+
+# =========================================================
+# Ansible (if added later)
+# =========================================================
+
+*.retry
+
+
+# =========================================================
+# Misc
+# =========================================================
+
+.DS_Store
+*.orig
+*.rej
+>>>>>>> e51ef3c (the compose was writed)
