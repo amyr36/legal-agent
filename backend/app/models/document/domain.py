@@ -1,4 +1,4 @@
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -23,10 +23,12 @@ class Domain(Base):
     )
 
     doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    type: Mapped[str] = mapped_column(String)
+    type: Mapped[str] = mapped_column(String, nullable=False)
 
     document = relationship(
         "Doc",

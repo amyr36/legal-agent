@@ -1,7 +1,6 @@
 # importing liberaries
-from db.base import Base
-
-from association_table import docs_to_keywords
+from backend.app.db.base import Base
+from backend.app.models.document.association_table import docs_to_keywords
 
 from sqlalchemy.orm import (
     Mapped,
@@ -22,7 +21,11 @@ class Keyword(Base):
         Integer,
         primary_key=True
     )
-    keyword_text: Mapped[str] = mapped_column(String)
+    keyword_text: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        nullable=False,
+    )
 
     documents = relationship(
         "Doc",

@@ -1,7 +1,7 @@
 # importing liberaries
 from datetime import datetime
 
-from db.base import Base
+from backend.app.db.base import Base
 
 # the extension to store vectors in PostgreSQL
 from pgvector.sqlalchemy import Vector
@@ -13,10 +13,11 @@ from sqlalchemy.orm import (
 )
 
 from sqlalchemy import (
+    DateTime,
     ForeignKey,
     Integer,
     String,
-    DateTime
+    func,
 )
 
 
@@ -30,19 +31,25 @@ class DocumentEmbedding(Base):
     )
 
     doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     vector: Mapped[list[float]] = mapped_column(
-        Vector()
+        Vector(),
+        nullable=False,
     )
 
     detected_by_model: Mapped[str] = mapped_column(
-        String
+        String,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     document = relationship(

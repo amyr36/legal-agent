@@ -1,5 +1,5 @@
 # importing liberaries
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -24,10 +24,12 @@ class AnalysisKeyword(Base):
     )
 
     analysis_id: Mapped[int] = mapped_column(
-        ForeignKey("analysis.analysis_id")
+        ForeignKey("analysis.analysis_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    content: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(String, nullable=False)
 
     analysis = relationship(
         "Analysis",

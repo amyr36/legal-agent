@@ -1,19 +1,20 @@
 from datetime import datetime
 
+from backend.app.db.base import Base
+
 from sqlalchemy import (
+    DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
+    func,
 )
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
 )
-
-from app.db.base import Base
 
 
 class DocNode(Base):
@@ -25,37 +26,46 @@ class DocNode(Base):
     )
 
     doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("doc_nodes.node_id"),
-        nullable=True
+        ForeignKey("doc_nodes.node_id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
 
     node_type: Mapped[str] = mapped_column(
-        String
+        String,
+        nullable=False,
     )
 
     node_title: Mapped[str | None] = mapped_column(
         String,
-        nullable=True
+        nullable=True,
     )
 
     content: Mapped[str] = mapped_column(
-        Text
+        Text,
+        nullable=False,
     )
 
     level: Mapped[int] = mapped_column(
-        Integer
+        Integer,
+        nullable=False,
     )
 
     order_index: Mapped[int] = mapped_column(
-        Integer
+        Integer,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     document = relationship(
@@ -72,18 +82,21 @@ class DocNode(Base):
 
     children = relationship(
         "DocNode",
-        back_populates="parent"
+        back_populates="parent",
+        cascade="all, delete-orphan",
     )
 
     # graph relationships
     outgoing_relationships = relationship(
         "NodeRelationship",
         foreign_keys="NodeRelationship.source_node_id",
-        back_populates="source_node"
+        back_populates="source_node",
+        cascade="all, delete-orphan",
     )
 
     incoming_relationships = relationship(
         "NodeRelationship",
         foreign_keys="NodeRelationship.target_node_id",
-        back_populates="target_node"
+        back_populates="target_node",
+        cascade="all, delete-orphan",
     )

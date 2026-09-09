@@ -1,11 +1,8 @@
 # importing liberaries
-from db.base import Base
-
-from sqlalchemy.orm import (
-    mapped_column,
-)
+from backend.app.db.base import Base
 
 from sqlalchemy import (
+    Column,
     ForeignKey,
     Table,
 )
@@ -14,6 +11,17 @@ from sqlalchemy import (
 docs_to_keywords = Table(
     "docs_to_keywords",
     Base.metadata,
-    mapped_column("doc_id", ForeignKey("docs.doc_id")),
-    mapped_column("keywords_id", ForeignKey("keywords.keywords_id")),
+    Column(
+        "doc_id",
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    ),
+    Column(
+        "keywords_id",
+        ForeignKey("keywords.keywords_id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+        nullable=False,
+    ),
 )

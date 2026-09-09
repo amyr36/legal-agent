@@ -1,19 +1,20 @@
 from datetime import datetime
 
+from backend.app.db.base import Base
+
 from sqlalchemy import (
-    Integer,
-    Float,
-    String,
     DateTime,
+    Float,
     ForeignKey,
+    Integer,
+    String,
+    func,
 )
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
 )
-
-from app.db.base import Base
 
 
 class NodeRelationship(Base):
@@ -25,27 +26,37 @@ class NodeRelationship(Base):
     )
 
     source_node_id: Mapped[int] = mapped_column(
-        ForeignKey("doc_nodes.node_id")
+        ForeignKey("doc_nodes.node_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     target_node_id: Mapped[int] = mapped_column(
-        ForeignKey("doc_nodes.node_id")
+        ForeignKey("doc_nodes.node_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     type_id: Mapped[int] = mapped_column(
-        ForeignKey("relationship_types.type_id")
+        ForeignKey("relationship_types.type_id"),
+        nullable=False,
+        index=True,
     )
 
     confidence_score: Mapped[float] = mapped_column(
-        Float
+        Float,
+        nullable=False,
     )
 
     detected_by_model: Mapped[str] = mapped_column(
-        String
+        String,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     source_node = relationship(

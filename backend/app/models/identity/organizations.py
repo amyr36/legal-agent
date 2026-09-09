@@ -1,5 +1,5 @@
 # importing liberaries
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -10,7 +10,6 @@ from sqlalchemy.orm import (
 from sqlalchemy import (
     Integer,
     String,
-
 )
 
 
@@ -22,9 +21,10 @@ class Organization(Base):
         Integer,
         primary_key=True
     )
-    name: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
     documents = relationship(
         "Doc",
-        back_populates="organization"
+        back_populates="organization",
+        cascade="all, delete-orphan",
     )

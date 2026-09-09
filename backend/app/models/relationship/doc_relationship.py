@@ -1,14 +1,15 @@
 # importing liberaries
 from datetime import datetime
 
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy import (
-    Integer,
-    Float,
-    String,
     DateTime,
+    Float,
     ForeignKey,
+    Integer,
+    String,
+    func,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -27,27 +28,37 @@ class DocRelationship(Base):
     )
 
     source_doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     target_doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     type_id: Mapped[int] = mapped_column(
-        ForeignKey("relationship_types.type_id")
+        ForeignKey("relationship_types.type_id"),
+        nullable=False,
+        index=True,
     )
 
     confidence_score: Mapped[float] = mapped_column(
-        Float
+        Float,
+        nullable=False,
     )
 
     detected_by_model: Mapped[str] = mapped_column(
-        String
+        String,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     source_document = relationship(

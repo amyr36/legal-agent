@@ -1,7 +1,7 @@
 # importing liberaries
 from datetime import datetime
 
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -10,11 +10,12 @@ from sqlalchemy.orm import (
 )
 
 from sqlalchemy import (
+    DateTime,
     ForeignKey,
     Integer,
-    DateTime,
-    JSONB,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 # building model
@@ -27,15 +28,20 @@ class Analysis(Base):
     )
 
     doc_id: Mapped[int] = mapped_column(
-        ForeignKey("docs.doc_id")
+        ForeignKey("docs.doc_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     analysis_result: Mapped[dict] = mapped_column(
-        JSONB
+        JSONB,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     document = relationship(
@@ -45,5 +51,6 @@ class Analysis(Base):
 
     keywords = relationship(
         "AnalysisKeyword",
-        back_populates="analysis"
+        back_populates="analysis",
+        cascade="all, delete-orphan",
     )

@@ -1,7 +1,7 @@
 # importing liberaries
 from datetime import datetime
 
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -10,11 +10,11 @@ from sqlalchemy.orm import (
 )
 
 from sqlalchemy import (
+    DateTime,
     ForeignKey,
     Integer,
     String,
-    DateTime,
-
+    func,
 )
 
 
@@ -23,14 +23,30 @@ class User(Base):
     __tablename__ = "users"
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    username: Mapped[str] = mapped_column(String)
-    phone_number: Mapped[str] = mapped_column(String)
+    username: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        nullable=False,
+    )
+    phone_number: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        nullable=False,
+    )
     role_id: Mapped[int] = mapped_column(
-        ForeignKey("roles.role_id")
+        ForeignKey("roles.role_id"),
+        nullable=False,
+        index=True,
     )
     signup_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     role = relationship("Role", back_populates="users")
-    documents = relationship("Doc", back_populates="user")
+    documents = relationship(
+        "Doc",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

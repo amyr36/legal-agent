@@ -1,5 +1,5 @@
 # importing liberaries
-from db.base import Base
+from backend.app.db.base import Base
 
 from sqlalchemy.orm import (
     Mapped,
@@ -22,7 +22,7 @@ class RelationshipType(Base):
         primary_key=True
     )
 
-    name: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
     doc_relationships = relationship(
         "DocRelationship",
