@@ -1,39 +1,24 @@
-from __future__ import annotations
-
-from collections.abc import Generator
-
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from backend.app.core.config import settings
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 
-def _create_engine() -> Engine:
-    connect_args: dict[str, object] = {}
-    if settings.DATABASE_URL.startswith("sqlite"):
-        # FastAPI executes sync dependencies in a thread pool, so SQLite
-        # connections must be allowed to move between worker threads.
-        connect_args["check_same_thread"] = False
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-    return create_engine(
-        settings.DATABASE_URL,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-    )
+# read from docker compose
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
 
+engine = create_engine(DATABASE_URL)
 
-engine = _create_engine()
-SessionLocal = sessionmaker(
-    bind=engine,
-    class_=Session,
-    autoflush=False,
-    expire_on_commit=False,
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
 
 
-def get_db() -> Generator[Session, None, None]:
-    """Provide one database session per request and always close it."""
-
-    with SessionLocal() as session:
-        yield session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

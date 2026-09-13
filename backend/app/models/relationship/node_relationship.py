@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from backend.app.db.base import Base
+from app.db.base import Base
 
 from sqlalchemy import (
     DateTime,

@@ -1,6 +1,6 @@
 # importing liberaries
-from backend.app.db.base import Base
-from backend.app.models.document.association_table import docs_to_keywords
+from app.db.base import Base
+from app.models.document.association_table import docs_to_keywords
 
 from sqlalchemy.orm import (
     Mapped,

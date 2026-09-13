@@ -6,10 +6,27 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from backend.app.api.routes import analyses, auth, documents
-from backend.app.core.config import settings
-from backend.app.db.base import Base
-from backend.app.db.database import engine
+from app.api.routers import analyses, auth, documents
+from app.core.config import settings
+from app.db.base import Base
+from app.db.database import engine
+
+# Register all SQLAlchemy models at startup so Base.metadata sees every table.
+from app.models import (
+    Analysis,
+    AnalysisKeyword,
+    Doc,
+    DocNode,
+    DocRelationship,
+    DocVersion,
+    Domain,
+    Keyword,
+    NodeRelationship,
+    Organization,
+    RelationshipType,
+    Role,
+    User,
+)
 
 
 @asynccontextmanager

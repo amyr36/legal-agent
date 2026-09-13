@@ -1,8 +1,8 @@
 # importing liberaries
 from datetime import datetime
 
-from backend.app.db.base import Base
-from backend.app.models.document.association_table import docs_to_keywords
+from app.db.base import Base
+from app.models.document.association_table import docs_to_keywords
 
 from sqlalchemy.orm import (
     Mapped,
@@ -92,12 +92,6 @@ class Doc(Base):
 
     nodes = relationship(
         "DocNode",
-        back_populates="document",
-        cascade="all, delete-orphan",
-    )
-
-    embeddings = relationship(
-        "DocumentEmbedding",
         back_populates="document",
         cascade="all, delete-orphan",
     )

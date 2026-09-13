@@ -5,7 +5,6 @@ from .document.doc_versions import DocVersion
 from .document.document import Doc
 from .document.domain import Domain
 from .document.keyword import Keyword
-from .Embedding.document_embedding import DocumentEmbedding
 from .identity.organizations import Organization
 from .identity.role import Role
 from .identity.user import User
@@ -20,7 +19,6 @@ __all__ = [
     "DocNode",
     "DocRelationship",
     "DocVersion",
-    "DocumentEmbedding",
     "Domain",
     "Keyword",
     "NodeRelationship",
