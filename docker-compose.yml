@@ -43,7 +43,7 @@ services:
 
     volumes:
       - ./backend:/app
-      - ./storage:/app/storage
+      - ./storage:/app/storage 
 
     depends_on:
       postgres:
