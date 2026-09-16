@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.routers import analyses, auth, documents
+from app.api.routers import analyses, documents
 from app.core.config import settings
 from app.db.base import Base
 from app.db.database import engine
@@ -27,6 +27,7 @@ from app.models import (
     Role,
     User,
 )
+from backend.app.api.routers.system import auth_router
 
 
 @asynccontextmanager
@@ -53,7 +54,7 @@ app.add_middleware(
     allow_headers=["Accept", "Content-Type"],
 )
 app.include_router(analyses.router, prefix=settings.API_PREFIX)
-app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(auth_router.router, prefix=settings.API_PREFIX)
 app.include_router(documents.router, prefix=settings.API_PREFIX)
 
 

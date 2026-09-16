@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +13,14 @@ DEFAULT_DATABASE_URL = "sqlite:///./legal_agent.db"
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or the root .env."""
+
+    MELIPAYAMAK_USERNAME: str = "change-me"
+    MELIPAYAMAK_PASSWORD: SecretStr = SecretStr("change-me")
+    MELIPAYAMAK_SENDER: str = ""
+
+    SECRET_KEY: SecretStr = SecretStr("change-me")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     APP_NAME: str = "Legal Agent"
     DEBUG: bool = False
@@ -30,7 +38,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
-        env_prefix="LEGAL_AGENT_",
         extra="ignore",
         case_sensitive=True,
     )
