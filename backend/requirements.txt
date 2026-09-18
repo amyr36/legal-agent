@@ -4,5 +4,5 @@ SQLAlchemy>=2.0,<3.0
 pydantic-settings>=2.7,<3.0
 psycopg[binary]>=3.2,<4.0
 pyjwt>=2.10,<3.0
-passlib[bcrypt]>=1.7,<2.0
-melipayamak
+pwdlib[argon2]>=0.2,<1.0
+python-multipart>=0.0.20,<1.0

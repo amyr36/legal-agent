@@ -28,6 +28,7 @@ class User(Base):
         unique=True,
         nullable=False,
     )
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     phone_number: Mapped[str] = mapped_column(
         String,
         unique=True,

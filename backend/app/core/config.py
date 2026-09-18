@@ -13,11 +13,7 @@ DEFAULT_DATABASE_URL = "sqlite:///./legal_agent.db"
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or the root .env."""
-
-    MELIPAYAMAK_USERNAME: str = "change-me"
-    MELIPAYAMAK_PASSWORD: SecretStr = SecretStr("change-me")
-    MELIPAYAMAK_SENDER: str = ""
-
+    
     SECRET_KEY: SecretStr = SecretStr("change-me")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

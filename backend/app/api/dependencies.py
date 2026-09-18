@@ -11,9 +11,8 @@ from app.models.identity.user import User
 
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_PREFIX}/auth/verify-otp"
+    tokenUrl=f"{settings.API_PREFIX}/auth/token"
 )
-
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -27,18 +26,11 @@ def get_current_user(
     )
 
     payload = decode_token(token)
-
     if payload is None:
         raise credentials_exception
 
-    subject = payload.get("sub")
-
-    if subject is None:
-        raise credentials_exception
-    
-    try:
-        user_id = int(subject)
-    except (TypeError, ValueError):
+    user_id = payload.get("sub")
+    if user_id is None:
         raise credentials_exception
 
     user = db.get(User, int(user_id))
