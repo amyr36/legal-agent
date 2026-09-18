@@ -4,15 +4,15 @@ from app.crud.document import document_crud
 from app.models.document.document import Doc
 from app.models.identity.user import User
 from app.schemas.document.document_schema import (
-    CreateDocument,
-    UpdateDocument,
+    DocumentCreate,
+    DocumentUpdate
 )
 
 
 def create_document(
     db: Session,
     normal_text: str,
-    data: CreateDocument,
+    data: DocumentCreate,
     current_user: User,
 ) -> Doc:
     """
@@ -67,7 +67,7 @@ def get_documents(
 def update_document(
     db: Session,
     document_id: int,
-    data: UpdateDocument,
+    data: DocumentUpdate,
     current_user: User,
 ) -> Doc | None:
 

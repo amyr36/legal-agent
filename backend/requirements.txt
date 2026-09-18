@@ -2,4 +2,7 @@ fastapi>=0.115,<1.0
 uvicorn[standard]>=0.34,<1.0
 SQLAlchemy>=2.0,<3.0
 pydantic-settings>=2.7,<3.0
-pgvector>=0.3.0,<1.0
+psycopg[binary]>=3.2,<4.0
+pyjwt>=2.10,<3.0
+passlib[bcrypt]>=1.7,<2.0
+melipayamak
