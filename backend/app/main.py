@@ -6,10 +6,29 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from backend.app.api.routes import analyses, auth, documents
-from backend.app.core.config import settings
-from backend.app.db.base import Base
-from backend.app.db.database import engine
+from app.api.routers.document import document_router
+from app.api.routers.system import auth_router
+from app.core.config import settings
+from app.db.base import Base
+from app.db.database import engine
+
+# Register all SQLAlchemy models at startup so Base.metadata sees every table.
+from app.models import (
+    Analysis,
+    AnalysisKeyword,
+    Doc,
+    DocNode,
+    DocRelationship,
+    DocVersion,
+    Domain,
+    Keyword,
+    NodeRelationship,
+    Organization,
+    RelationshipType,
+    Role,
+    User,
+)
+
 
 
 @asynccontextmanager
@@ -35,9 +54,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
     allow_headers=["Accept", "Content-Type"],
 )
-app.include_router(analyses.router, prefix=settings.API_PREFIX)
-app.include_router(auth.router, prefix=settings.API_PREFIX)
-app.include_router(documents.router, prefix=settings.API_PREFIX)
+#app.include_router(analyses.router, prefix=settings.API_PREFIX)
+app.include_router(auth_router.router, prefix=settings.API_PREFIX)
+app.include_router(document_router.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/", tags=["system"])
