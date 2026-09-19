@@ -1,9 +1,3 @@
-"""Vector store management only: FAISS build/load, records → Documents,
-metadata preservation.
-
-Runnable standalone:  python -m services.vector_store_service
-"""
-
 import json
 import os
 from typing import Dict, List
@@ -184,10 +178,9 @@ def build_or_load_all(embeddings: HuggingFaceEmbeddings = None, rebuild: bool = 
 # Standalone run
 # ---------------------------------------------------------------------------
 
-
-if __name__ == "__main__":
+def quick_run():
     print("=== services.vector_store_service (standalone) ===")
     emb = get_embeddings()
     stores = build_or_load_all(emb, rebuild=False)
     for key, vs in stores.items():
-        print(f"  FAISS {key}: {len(vs.index_to_docstore_id)} vectors")
+        print(f"  FAISS {key}: {len(vs.index_to_docstore_id)} vectors")    

@@ -1,4 +1,4 @@
-"""Hybrid + bidirectional candidate generation.
+"""Hybrid + candidate generation.
 
 Runnable standalone:  python -m services.retrieval
 (it loads context, builds/loads FAISS, runs hybrid retrieval, prints pairs)
@@ -96,7 +96,7 @@ def _reference_candidates(source_record: Dict, target_records: List[Dict]) -> Li
 
 
 # ---------------------------------------------------------------------------
-# Hybrid + bidirectional retrieval
+# Hybrid retrieval (A -> B only)
 # ---------------------------------------------------------------------------
 
 
@@ -106,22 +106,20 @@ def retrieve_candidates(
     records_b: List[Dict],
     top_k: int = TOP_K,
 ) -> List[Dict]:
-    """HYBRID + BIDIRECTIONAL candidate generation (A<->B, FAISS+BM25+ref)."""
-    pool = {"A": records_a, "B": records_b}
-    bm25 = {"A": BM25Index(records_a), "B": BM25Index(records_b)}
-    by_id = {key: records_by_id(pool[key]) for key in pool}
+    """HYBRID candidate generation (A -> B, FAISS+BM25+ref)."""
+    bm25_b = BM25Index(records_b)
+    by_id_b = records_by_id(records_b)
+    vector_store_b = vector_stores["B"]
 
     pairs_by_key: Dict[Tuple[Any, Any], Dict] = {}
 
     def _add_pair(rec_source: Dict, rec_target: Dict, score: float, method: str) -> None:
-        a = rec_source if rec_source in records_a else rec_target
-        b = rec_target if rec_source in records_a else rec_source
-        key = (a.get("id"), b.get("id"))
+        key = (rec_source.get("id"), rec_target.get("id"))
         entry = pairs_by_key.get(key)
         if entry is None:
             pairs_by_key[key] = {
-                "source": a,
-                "candidate": b,
+                "source": rec_source,
+                "candidate": rec_target,
                 "retrieval_score": score,
                 "retrieval_methods": [method],
             }
@@ -131,27 +129,21 @@ def retrieve_candidates(
             if method not in entry["retrieval_methods"]:
                 entry["retrieval_methods"].append(method)
 
-    for source_key, target_key in (("A", "B"), ("B", "A")):
-        source_records = pool[source_key]
-        target_records = pool[target_key]
-        vector_store = vector_stores[target_key]
-        bm25_index = bm25[target_key]
+    for record in records_a:
+        query_text = str(record.get("text", ""))
+        if not query_text.strip():
+            continue
 
-        for record in source_records:
-            query_text = str(record.get("text", ""))
-            if not query_text.strip():
-                continue
+        for target_id, distance in _semantic_search(vector_store_b, query_text, top_k):
+            target_record = by_id_b.get(target_id)
+            if target_record is not None:
+                _add_pair(record, target_record, distance, "faiss")
 
-            for target_id, distance in _semantic_search(vector_store, query_text, top_k):
-                target_record = by_id[target_key].get(target_id)
-                if target_record is not None:
-                    _add_pair(record, target_record, distance, "faiss")
+        for target_record, score in bm25_b.search(query_text, top_k):
+            _add_pair(record, target_record, score, "bm25")
 
-            for target_record, score in bm25_index.search(query_text, top_k):
-                _add_pair(record, target_record, score, "bm25")
-
-            for target_record in _reference_candidates(record, target_records):
-                _add_pair(record, target_record, 0.0, "reference")
+        for target_record in _reference_candidates(record, records_b):
+            _add_pair(record, target_record, 0.0, "reference")
 
     return list(pairs_by_key.values())
 
@@ -176,8 +168,7 @@ def deduplicate_pairs(pairs: List[Dict]) -> List[Dict]:
 # ---------------------------------------------------------------------------
 
 
-def _demo() -> None:
-    """Load context, build FAISS, run hybrid retrieval, print candidate pairs."""
+def quick_lanch() -> list[dict]:
     print("=== services.retrieval (standalone) ===")
     print("[1/4] loading context ...")
     records_a = vss.load_context("A")
@@ -188,20 +179,14 @@ def _demo() -> None:
     embeddings = vss.get_embeddings()
     vector_stores = vss.build_or_load_all(embeddings, rebuild=False)
 
-    print("[3/4] running hybrid bidirectional retrieval ...")
+    print("[3/4] running hybrid retrieval (A -> B) ...")
     pairs = retrieve_candidates(vector_stores, records_a, records_b, top_k=TOP_K)
     pairs = deduplicate_pairs(pairs)
 
     print(f"[4/4] {len(pairs)} unique candidate pair(s):")
-    for p in pairs[:20]:  # فقط ۲۰ تای اول
-        methods = ",".join(p.get("retrieval_methods", []))
-        print(
-            f"  ({p['source'].get('id')}) -> ({p['candidate'].get('id')}) "
-            f"score={p['retrieval_score']:.4f} methods=[{methods}]"
-        )
-    if len(pairs) > 20:
-        print(f"  ... ({len(pairs) - 20} more)")
+
+    return pairs
 
 
 if __name__ == "__main__":
-    _demo()
+    pairs = quick_lanch()
