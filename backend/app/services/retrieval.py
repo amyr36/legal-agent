@@ -1,9 +1,3 @@
-"""Hybrid + candidate generation.
-
-Runnable standalone:  python -m services.retrieval
-(it loads context, builds/loads FAISS, runs hybrid retrieval, prints pairs)
-"""
-
 import re
 from typing import Any, Dict, List, Optional, Tuple
 

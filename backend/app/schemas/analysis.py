@@ -2,11 +2,6 @@ from typing import Any, Dict, List, Literal, TypedDict
 
 from pydantic import BaseModel, Field
 
-from core.config import (
-    RELATION_BASIS_VALUES,
-    RELATION_MODE_VALUES,
-    RELATION_TYPE_VALUES,
-)
 
 
 # ---------------------------------------------------------------------------
