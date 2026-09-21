@@ -7,14 +7,10 @@ from typing import Optional
 class DocumentCreate(BaseModel):
     title: str
     file_path: str
-    content: str
-    organization_id: int
 
 
 class DocumentUpdate(BaseModel):
     title: Optional[str] = None
-    file_path: Optional[str] = None
-    content: Optional[str] = None
     organization_id: Optional[int] = None
 
 

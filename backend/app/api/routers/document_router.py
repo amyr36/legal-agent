@@ -17,7 +17,8 @@ router = APIRouter(
 def create_document(
     title: str = Form(...),
     organization_id: int = Form(...),
-    file: UploadFile = File(...),
+    file_a: UploadFile = File(...),
+    file_b: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -25,6 +26,7 @@ def create_document(
         db=db,
         title=title,
         organization_id=organization_id,
-        file=file,
+        file_a=file_a,
+        file_b=file_b,
         current_user=current_user,
     )

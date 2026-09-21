@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from backend.app.services.document_extractor import FileExtractor
-from backend.app.services.document_normalizer_service import TextNormalizer
+from backend.tests.document_extractor import FileExtractor
+from backend.tests.document_normalizer_service import TextNormalizer
 
 
 TEST_FILE = Path("backend/tests/documents/hormuz.pdf")
