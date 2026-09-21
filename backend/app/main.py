@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.routers.document import document_router
-from app.api.routers.system import auth_router
+from backend.app.api.routers import document_router
+from backend.app.api.routers import auth_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.database import engine

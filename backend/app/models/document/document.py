@@ -16,7 +16,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    func,
+    JSONB,
+    func
 )
 
 
@@ -41,7 +42,7 @@ class Doc(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    normal_text: Mapped[str] = mapped_column(Text, nullable=False)
+    rag_data: Mapped[str] = mapped_column(JSONB, nullable=False)
 
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.organization_id", ondelete="CASCADE"),
