@@ -16,7 +16,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    JSONB,
     func
 )
 
@@ -39,10 +38,6 @@ class Doc(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
 
     file_path: Mapped[str] = mapped_column(String, nullable=False)
-
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-
-    rag_data: Mapped[str] = mapped_column(JSONB, nullable=False)
 
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.organization_id", ondelete="CASCADE"),

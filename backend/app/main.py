@@ -4,13 +4,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import text, select
 
-from backend.app.api.routers import document_router
-from backend.app.api.routers import auth_router
+from app.api.routers import document_router
+from app.api.routers import auth_router
 from app.core.config import settings
 from app.db.base import Base
-from app.db.database import engine
+from app.db.database import engine, SessionLocal
 
 # Register all SQLAlchemy models at startup so Base.metadata sees every table.
 from app.models import (
@@ -29,14 +29,27 @@ from app.models import (
     User,
 )
 
-
-
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Create the schema and optionally load the local sample at startup."""
+    Base.metadata.create_all(bind=engine)
 
-    if settings.AUTO_CREATE_TABLES:
-        Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        # سازمان پیش‌فرض
+        if db.scalar(select(Organization).limit(1)) is None:
+            db.add(Organization(
+                organization_id=1,
+                name="majles",
+            ))
+
+        # نقش‌های پیش‌فرض
+        if db.scalar(select(Role).limit(1)) is None:
+            db.add_all([
+                Role(role_id=1, title="user"),
+                Role(role_id=2, title="admin"),
+            ])
+
+        db.commit()
+
     yield
     engine.dispose()
 

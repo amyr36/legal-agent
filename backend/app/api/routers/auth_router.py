@@ -12,7 +12,7 @@ from app.core.security import (
 )
 from app.db.database import get_db
 from app.models.identity.user import User
-from app.schemas.system.auth_shema import Token, UserLogin, UserRegister
+from app.schemas.auth_shema import Token, UserLogin, UserRegister
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

@@ -3,34 +3,24 @@ from sqlalchemy.orm import Session
 from app.crud.document import document_crud
 from app.models.document.document import Doc
 from app.models.identity.user import User
-from app.schemas.document.document_schema import (
-    DocumentCreate,
-    DocumentUpdate
-)
+from app.schemas.document_schema import DocumentUpdate
 
 
-def create_document(
+async def create_document(
     db: Session,
-    normal_text: str,
-    data: DocumentCreate,
+    title: str,
+    organization_id: int,
+    file,
     current_user: User,
-) -> Doc:
-    """
-    Create a document for the authenticated user.
+    ) -> Doc:
 
-    normal_text = analysis_service.normalize(data.content)
-    """
-
-    document = Doc(
+    return await document_crud.create_document(
+        db=db,
+        title=title,
+        organization_id=organization_id,
+        file=file,
         user_id=current_user.user_id,
-        title=data.title,
-        file_path=data.file_path,
-        content=data.content,
-        normal_text=normal_text,
-        organization_id=data.organization_id,
     )
-
-    return document_crud.create_document(db, document)
 
 
 def get_document(
@@ -85,13 +75,6 @@ def update_document(
     update_data = data.model_dump(
         exclude_unset=True,
     )
-
-    if "content" in update_data:
-        # TODO:
-        # document.normal_text = analysis_service.normalize(
-        #     update_data["content"]
-        # )
-        pass
 
     for field, value in update_data.items():
         setattr(document, field, value)

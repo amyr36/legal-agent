@@ -20,8 +20,6 @@ class DocumentRead(BaseModel):
     organization_id: int
     title: str
     file_path: str
-    content: str
-    normal_text: str
     created_at: datetime
 
 
