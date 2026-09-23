@@ -68,15 +68,10 @@ def _analyze_with_llm_node(state: AnalysisState) -> Dict:
     return {"raw_results": raw}
 
 
-def _build_results_node(state: AnalysisState) -> Dict:
-    print("[analysis] node: build_results")
-    results = shape_results(
-        state["raw_results"],
-        state["records_a"],
-        state["records_b"],
-        candidate_pairs=state.get("candidate_pairs", []),
-    )
-    path = save_results(results)
+def _save_results_node(state: AnalysisState) -> Dict:
+    print("[analysis] node: save_results")
+    results = state["raw_results"]
+    path = save_results(state["raw_results"])
     print(f"  saved {len(results)} result(s) to {path}")
     return {"results": results, "results_path": path}
 
@@ -92,14 +87,14 @@ def build_analysis_graph() -> StateGraph:
     graph.add_node("load_vector_stores", _load_vector_stores_node)
     graph.add_node("retrieve_candidates", _retrieve_candidates_node)
     graph.add_node("analyze_with_llm", _analyze_with_llm_node)
-    graph.add_node("build_results", _build_results_node)
+    graph.add_node("save_results", _save_results_node)
 
     graph.set_entry_point("load_context")
     graph.add_edge("load_context", "load_vector_stores")
     graph.add_edge("load_vector_stores", "retrieve_candidates")
     graph.add_edge("retrieve_candidates", "analyze_with_llm")
-    graph.add_edge("analyze_with_llm", "build_results")
-    graph.add_edge("build_results", END)
+    graph.add_edge("analyze_with_llm", "save_results")
+    graph.add_edge("save_results", END)
     return graph
 
 

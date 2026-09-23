@@ -149,50 +149,6 @@ def analyze_all_pairs(pairs: List[Dict], chat_model=None, batch_size: int = LLM_
     return results
 
 
-# ---------------------------------------------------------------------------
-# Result shaping
-# ---------------------------------------------------------------------------
-
-
-def _format_reference(record: Dict) -> Dict:
-    return {field: record.get(field) for field in vss.METADATA_FIELDS}
-
-
-def shape_results(
-    raw_results: List[AnalysisResult],
-    records_a: List[Dict],
-    records_b: List[Dict],
-    candidate_pairs: Optional[List[Dict]] = None,
-) -> List[Dict]:
-    a_by_id = records_by_id(records_a)
-    b_by_id = records_by_id(records_b)
-    methods_by_key = {
-        (p["source"].get("id"), p["candidate"].get("id")): p.get("retrieval_methods", [])
-        for p in (candidate_pairs or [])
-    }
-
-    shaped: List[Dict] = []
-    for r in raw_results:
-        source_record = a_by_id.get(r.source_id) or b_by_id.get(r.source_id)
-        target_record = a_by_id.get(r.target_id) or b_by_id.get(r.target_id)
-        if source_record is None or target_record is None:
-            print(f"  [shape] warning: cannot resolve ids {r.source_id}/{r.target_id}")
-            continue
-        shaped.append({
-            "source_id": r.source_id,
-            "target_id": r.target_id,
-            "source_metadata": _format_reference(source_record),
-            "target_metadata": _format_reference(target_record),
-            "source_text": source_record.get("text"),
-            "target_text": target_record.get("text"),
-            "relation": r.relation,
-            "relation_type": r.relation_type,
-            "explanation": r.explanation,
-            "confidence": r.confidence,
-            "retrieval_methods": methods_by_key.get((r.source_id, r.target_id), []),
-        })
-    return shaped
-
 
 def save_results(shaped_results: List[Dict], path: str = RESULTS_PATH) -> str:
     with open(path, "w", encoding="utf-8") as f:
