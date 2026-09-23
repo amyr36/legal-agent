@@ -35,15 +35,12 @@ services:
     env_file:
       - .env
 
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-
     ports:
       - "8000:8000"
 
     volumes:
       - ./backend:/app
-      - ./storage:/app/storage
+      - ./storage:/app/storage 
 
     depends_on:
       postgres:
