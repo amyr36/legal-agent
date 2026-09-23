@@ -12,32 +12,13 @@ from langgraph.graph import END, StateGraph
 from services import vector_store as vss
 from core.config import TOP_K
 from services.llm_analisis import (
-    AnalysisResult,
     analyze_all_pairs,
     get_chat_model,
     save_results,
     shape_results,
 )
 from services.retrieval import deduplicate_pairs, retrieve_candidates
-
-
-# ---------------------------------------------------------------------------
-# State
-# ---------------------------------------------------------------------------
-
-
-class AnalysisState(TypedDict, total=False):
-    rebuild: bool
-    records_a: List[Dict]
-    records_b: List[Dict]
-    embeddings: Any
-    chat_model: Any
-    top_k: int
-    vector_stores: Dict[str, Any]
-    candidate_pairs: List[Dict]
-    raw_results: List[AnalysisResult]
-    results: List[Dict]
-    results_path: str
+from schemas.analysis import AnalysisState, AnalysisResult
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +120,7 @@ def run_analysis(
 
 
 # ---------------------------------------------------------------------------
-# Public API (used by app.py)
+# Public API
 # ---------------------------------------------------------------------------
 
 
@@ -167,12 +148,3 @@ def analyze_documents(
     return state.get("results", [])
 
 
-# ---------------------------------------------------------------------------
-# Standalone run
-# ---------------------------------------------------------------------------
-
-
-if __name__ == "__main__":
-    print("=== services.langgraph (full pipeline) ===")
-    results = analyze_documents()
-    print(f"\nDone. {len(results)} final result(s).")

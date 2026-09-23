@@ -1,10 +1,9 @@
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
 
 from services import vector_store as vss
 from core.config import (
@@ -58,13 +57,8 @@ def text_block(record: Dict) -> str:
     return "\n".join(lines)
 
 
-def build_pair_prompt(record_a: Dict, record_b: Dict, retrieval_score=None) -> str:
-    score_note = (
-        f" (retrieval score {retrieval_score:.4f} — فقط جهت اطلاع)"
-        if retrieval_score is not None
-        else ""
-    )
-    return f"""### Pair: source_id = {record_a.get("id")} , target_id = {record_b.get("id")}{score_note}
+def build_pair_prompt(record_a: Dict, record_b: Dict) -> str:
+    return f"""### Pair:
 SOURCE (id {record_a.get("id")}):
 {text_block(record_a)}
 
@@ -86,18 +80,10 @@ def analyze_pairs_batch(pairs: List[Dict], chat_model=None) -> List[AnalysisResu
     structured_llm = chat_model.with_structured_output(BatchAnalysisResult)
 
     pair_blocks = [
-        build_pair_prompt(p["source"], p["candidate"], p.get("retrieval_score"))
+        build_pair_prompt(p["source"], p["candidate"])
         for p in pairs
     ]
-    user_prompt = (
-        "زوج‌های زیر را تحلیل حقوقی کن. برای هر pair دقیقاً یک نتیجه برگردان شامل: "
-        "source_id, target_id, relation (مشابه | متناقض | بی‌ارتباط), relation_type, "
-        "relation_basis, relation_mode, explanation, confidence. "
-        f"دقیقاً {len(pairs)} نتیجه، به همان ترتیب pairها.\n\n"
-        + "\n\n".join(pair_blocks)
-    )
-
-    messages = [("system", ANALYSIS_SYSTEM_PROMPT), ("user", user_prompt)]
+    messages = [("system", ANALYSIS_SYSTEM_PROMPT), ("user", pair_blocks)]
 
     last_exc: Optional[Exception] = None
     for attempt in range(1, LLM_MAX_RETRIES + 1):
@@ -118,9 +104,7 @@ def _extract_results(response: Any) -> List[AnalysisResult]:
     return []
 
 
-def _match_results_to_pairs(
-    batch: List[Dict], batch_results: List[AnalysisResult]
-) -> Tuple[List[Tuple[Dict, AnalysisResult]], List[AnalysisResult]]:
+def _match_results_to_pairs(batch: List[Dict], batch_results: List[AnalysisResult]) -> Tuple[List[Tuple[Dict, AnalysisResult]], List[AnalysisResult]]:
     pairs_by_key = {(p["source"].get("id"), p["candidate"].get("id")): p for p in batch}
     matched: List[Tuple[Dict, AnalysisResult]] = []
     unmatched: List[AnalysisResult] = []
@@ -135,9 +119,7 @@ def _match_results_to_pairs(
     return matched, unmatched
 
 
-def analyze_all_pairs(
-    pairs: List[Dict], chat_model=None, batch_size: int = LLM_BATCH_SIZE
-) -> List[AnalysisResult]:
+def analyze_all_pairs(pairs: List[Dict], chat_model=None, batch_size: int = LLM_BATCH_SIZE) -> List[AnalysisResult]:
     results: List[AnalysisResult] = []
     if not pairs:
         return results
