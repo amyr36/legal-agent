@@ -13,8 +13,8 @@ class AnalysisResult(BaseModel):
 
     source_id: int 
     target_id: int 
-    relation: Literal["مشابه", "متناقض", "بی‌ارتباط"]
-    relation_type: Literal[None, "تکرار مقرراتی", "اقتباس", "تکمیل", "تخصیص", "تعارض", "نسخ صریح", "نسخ ضمنی", "ابهام تفسیری", "ناسازگاری"]
+    relation: Literal["مشابه", "متناقض"]
+    relation_type: Literal["تکرار مقرراتی", "اقتباس", "تکمیل", "تخصیص", "تعارض", "نسخ صریح", "نسخ ضمنی", "ابهام تفسیری", "ناسازگاری"]
     explanation: str
     confidence: float = Field(
         ge=0.0,

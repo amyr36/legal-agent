@@ -61,30 +61,27 @@ RECORD_INDEX_KEY = "_record_index"
 # ---------------------------------------------------------------------------
 
 TOP_K = 3
-LLM_BATCH_SIZE = 6
+LLM_BATCH_SIZE = 5
 LLM_MAX_RETRIES = 2
-MAX_CONCURRENT_REQUESTS = 20
+MAX_CONCURRENT_REQUESTS = 3
 
 # ---------------------------------------------------------------------------
 # Chat model config
 # ---------------------------------------------------------------------------
 
-CHAT_MODEL_BASE_URL = "https://api.avalai.ir/v1"
-CHAT_MODEL_API_KEY = "aa-2UNRjqu93VzHsPv8qTZX7gn4QqBhXtUwyBak1UHFbky7i08T"
-CHAT_MODEL_NAME = "claude-sonnet-5"
-EFFORT = "high"
+CHAT_MODEL_BASE_URL = "https://tokenharbor.ai/v1"
+CHAT_MODEL_API_KEY = "thk_live_yJLyj5oBNd8oQORUgiGJ7ajvZKczNqjenHNUsIqiFWbydX4CTT6c70cSte13V7d6"
+CHAT_MODEL_NAME = "deepseek-v4.1-flash:free"
+EFFORT_ON = False
+EFFORT_LEVEL = "high"
 
 # ---------------------------------------------------------------------------
 # Legal relation taxonomy
 # ---------------------------------------------------------------------------
 
-RELATION_VALUES = ["مشابه", "متناقض", "بی‌ارتباط"]
+RELATION_VALUES = ["مشابه", "متناقض"]
 
-RELATION_TYPE_VALUES = [
-    "تکرار مقرراتی", "اقتباس", "تکمیل", "تخصیص", "تعارض",
-    "نسخ صریح", "نسخ ضمنی", "ابهام تفسیری", "ناسازگاری اصلاحی",
-    "هم‌ارزی حکمی", "سایر",
-]
+RELATION_TYPE_VALUES = ["تکرار مقرراتی", "اقتباس", "تکمیل", "تخصیص", "تعارض", "نسخ صریح", "نسخ ضمنی", "ابهام تفسیری", "ناسازگاری"]
 
 
 # ---------------------------------------------------------------------------
@@ -142,26 +139,6 @@ def get_settings() -> Settings:
 
 settings = get_settings()
 
-
-# ---------------------------------------------------------------------------
-# Standalone run
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    print("=== core.config ===")
-    print(f"BASE_DIR        = {BASE_DIR}")
-    print(f"SOURCES_DIR     = {SOURCES_DIR}")
-    print(f"RESULTS_PATH    = {RESULTS_PATH}")
-    print(f"EMBEDDING_MODEL = {EMBEDDING_MODEL}")
-    print(f"CHAT_MODEL      = {CHAT_MODEL_NAME} @ {CHAT_MODEL_BASE_URL}")
-    print(f"TOP_K           = {TOP_K}")
-    print(f"LLM_BATCH_SIZE  = {LLM_BATCH_SIZE}")
-    print("DOCUMENT_SLOTS:")
-    for k, slot in DOCUMENT_SLOTS.items():
-        print(f"  {k}: context={slot['context_path']}")
-        print(f"     temp={slot['temp_dir']}")
-    print(f"METADATA_FIELDS = {METADATA_FIELDS}")
-    print(f"relation types  = {RELATION_TYPE_VALUES}")
 
 
 

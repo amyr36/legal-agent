@@ -107,21 +107,14 @@ def retrieve_candidates(
 
     pairs_by_key: Dict[Tuple[Any, Any], Dict] = {}
 
-    def _add_pair(rec_source: Dict, rec_target: Dict, score: float, method: str) -> None:
+    def _add_pair(rec_source: Dict, rec_target: Dict) -> None:
         key = (rec_source.get("id"), rec_target.get("id"))
         entry = pairs_by_key.get(key)
         if entry is None:
             pairs_by_key[key] = {
                 "source": rec_source,
                 "candidate": rec_target,
-                "retrieval_score": score,
-                "retrieval_methods": [method],
             }
-        else:
-            if score < entry["retrieval_score"]:
-                entry["retrieval_score"] = score
-            if method not in entry["retrieval_methods"]:
-                entry["retrieval_methods"].append(method)
 
     for record in records_a:
         query_text = str(record.get("text", ""))
@@ -131,13 +124,13 @@ def retrieve_candidates(
         for target_id, distance in _semantic_search(vector_store_b, query_text, top_k):
             target_record = by_id_b.get(target_id)
             if target_record is not None:
-                _add_pair(record, target_record, distance, "faiss")
+                _add_pair(record, target_record)
 
         for target_record, score in bm25_b.search(query_text, top_k):
-            _add_pair(record, target_record, score, "bm25")
+            _add_pair(record, target_record)
 
         for target_record in _reference_candidates(record, records_b):
-            _add_pair(record, target_record, 0.0, "reference")
+            _add_pair(record, target_record)
 
     return list(pairs_by_key.values())
 

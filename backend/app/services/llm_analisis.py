@@ -2,10 +2,13 @@ import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from functools import lru_cache
 
 from langchain_openai import ChatOpenAI
 
 from services import vector_store as vss
+from core.config import SOURCES_DIR
 from core.config import (
     CHAT_MODEL_API_KEY,
     CHAT_MODEL_BASE_URL,
@@ -16,9 +19,10 @@ from core.config import (
     RELATION_TYPE_VALUES,
     RESULTS_PATH,
     TOP_K,
-    EFFORT
+    EFFORT_LEVEL,
+    EFFORT_ON
 )
-from core.prompts import ANALYSIS_SYSTEM_PROMPT
+from core.prompts import ANALYSIS_SYSTEM_PROMPT , build_batch_user_prompt
 from schemas.analysis import BatchAnalysisResult, AnalysisResult
 from services.retrieval import (
     deduplicate_pairs,
@@ -31,13 +35,13 @@ from services.retrieval import (
 # LLM setup
 # ---------------------------------------------------------------------------
 
-
+@lru_cache(maxsize=1)
 def get_chat_model() -> ChatOpenAI:
     return ChatOpenAI(
         base_url=CHAT_MODEL_BASE_URL,
         api_key=CHAT_MODEL_API_KEY,
         model=CHAT_MODEL_NAME,
-        reasoning_effort=EFFORT
+        reasoning_effort=EFFORT_LEVEL if EFFORT_ON else None,
     )
 
 
@@ -83,7 +87,7 @@ def analyze_pairs_batch(pairs: List[Dict], chat_model=None) -> List[AnalysisResu
         build_pair_prompt(p["source"], p["candidate"])
         for p in pairs
     ]
-    messages = [("system", ANALYSIS_SYSTEM_PROMPT), ("user", pair_blocks)]
+    messages = [("system", ANALYSIS_SYSTEM_PROMPT), ("user", build_batch_user_prompt(pair_blocks))]
 
     last_exc: Optional[Exception] = None
     for attempt in range(1, LLM_MAX_RETRIES + 1):
@@ -166,21 +170,8 @@ def _demo() -> None:
     """Full mini-pipeline: load context -> retrieve -> call LLM -> print."""
     print("=== services.llm_analysis (standalone) ===")
 
-    print("[1/4] loading context + vector stores ...")
-    records_a = vss.load_context("A")
-    records_b = vss.load_context("B")
-    embeddings = vss.get_embeddings()
-    vector_stores = vss.build_or_load_all(embeddings, rebuild=False)
-
     print("[2/4] retrieving candidates ...")
-    pairs = deduplicate_pairs(
-        retrieve_candidates(vector_stores, records_a, records_b, top_k=TOP_K)
-    )
-    print(f"      {len(pairs)} candidate pair(s)")
-
-    if not pairs:
-        print("      nothing to analyze.")
-        return
+    pairs = (Path(SOURCES_DIR) / 'file.txt').read_text(encoding='utf-8')
 
     print("[3/4] calling LLM ...")
     raw = analyze_all_pairs(pairs)

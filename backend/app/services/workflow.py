@@ -15,7 +15,6 @@ from services.llm_analisis import (
     analyze_all_pairs,
     get_chat_model,
     save_results,
-    shape_results,
 )
 from services.retrieval import deduplicate_pairs, retrieve_candidates
 from schemas.analysis import AnalysisState, AnalysisResult
