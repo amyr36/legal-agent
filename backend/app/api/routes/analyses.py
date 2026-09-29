@@ -12,9 +12,9 @@ router = APIRouter(prefix="/analyze", tags=["analyze"])
 
 
 class AnalyzeRequest(BaseModel):
-    document_a: Optional[List[Dict[str, Any]]]
-    document_b: Optional[List[Dict[str, Any]]]
-    rebuild: bool = Field(default=False, description="rebuild Chunks and VectorDatabase")
+    document_a: Optional[List[Dict[str, Any]]] = None
+    document_b: Optional[List[Dict[str, Any]]] = None
+    rebuild: bool = Field(default=True, description="rebuild Chunks and VectorDatabase")
 
 
 class AnalyzeResponse(BaseModel):
@@ -23,14 +23,10 @@ class AnalyzeResponse(BaseModel):
 
 
 
-@router.post("/workflow", response_model=AnalyzeResponse)
+@router.post("/workflow/run", response_model=AnalyzeResponse)
 def run_workflow(request: AnalyzeRequest) -> AnalyzeResponse:
     try:
-        results = workflow.analyze_documents(
-            records_a=request.document_a,
-            records_b=request.document_b,
-            rebuild=request.rebuild,
-        )
+        results = workflow.analyze_documents(records_a=request.document_a, records_b=request.document_b)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except FileNotFoundError as exc:
@@ -38,8 +34,21 @@ def run_workflow(request: AnalyzeRequest) -> AnalyzeResponse:
     return AnalyzeResponse(count=len(results), relations=results)
 
 
-# @router.get("/workflow")
-# def get_workflow:
+@router.get("/workflow/status")
+def get_workflow_status(run_id: str):
+    try:
+        status = workflow.get_status(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return status
+
+@router.post("/workflow/resume")
+def resume_workflow(run_id: str):
+    try:
+        results = workflow.resume_analysis(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return results
 
 
 @router.post("/llm")

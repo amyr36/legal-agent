@@ -28,6 +28,10 @@ DOCUMENT_SLOTS = {
     },
 }
 
+CHECKPOINT_DB = os.environ.get("LEGAL_SIM_CHECKPOINT_DB", "checkpoints.sqlite")
+CANDIDATES_PATH = os.path.join(os.path.dirname(RESULTS_PATH) or ".", "candidates.jsonl")
+MAX_MISSING_RATIO = 0.0
+
 # ---------------------------------------------------------------------------
 # Embedding model
 # ---------------------------------------------------------------------------
@@ -60,18 +64,18 @@ RECORD_INDEX_KEY = "_record_index"
 # Retrieval / LLM tunables
 # ---------------------------------------------------------------------------
 
-TOP_K = 3
+TOP_K = 2
 LLM_BATCH_SIZE = 5
 LLM_MAX_RETRIES = 2
-MAX_CONCURRENT_REQUESTS = 3
+MAX_CONCURRENT_REQUESTS = 2
 
 # ---------------------------------------------------------------------------
 # Chat model config
 # ---------------------------------------------------------------------------
 
-CHAT_MODEL_BASE_URL = "https://tokenharbor.ai/v1"
-CHAT_MODEL_API_KEY = "thk_live_yJLyj5oBNd8oQORUgiGJ7ajvZKczNqjenHNUsIqiFWbydX4CTT6c70cSte13V7d6"
-CHAT_MODEL_NAME = "deepseek-v4.1-flash:free"
+CHAT_MODEL_BASE_URL = "https://api.apmix.ai/v1"
+CHAT_MODEL_API_KEY = "apx_live_1eEKs5DnQOq282Rl3JXfO0fXyg9UqlsnW2YA9GFz"
+CHAT_MODEL_NAME = "deepseek-v4-flash-free"
 EFFORT_ON = False
 EFFORT_LEVEL = "high"
 
