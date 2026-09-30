@@ -20,6 +20,7 @@ class DocumentRead(BaseModel):
     organization_id: int
     title: str
     file_path: str
+    extracted_path: Optional[str] = None
     created_at: datetime
 
 

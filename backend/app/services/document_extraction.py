@@ -22,8 +22,7 @@ import re
 import unicodedata
 from collections import Counter
 
-import fitz  # PyMuPDF
-from hazm import Normalizer
+import pymupdf as fitz  # PyMuPDF
 
 try:
     import pytesseract
@@ -232,7 +231,7 @@ def _extract_page_ocr(page) -> str:
 # Public entry point
 # ---------------------------------------------------------------------
 
-def extract_pdf(path) -> ExtractedDocument:
+def extract_pdf(path, use_ocr: bool = True) -> ExtractedDocument:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(path)
@@ -244,7 +243,11 @@ def extract_pdf(path) -> ExtractedDocument:
         for i, page in enumerate(document, start=1):
             native_text = _extract_page_native(page)
 
-            if is_corrupted(native_text) and OCR_AVAILABLE:
+            if (
+                use_ocr
+                and is_corrupted(native_text)
+                and OCR_AVAILABLE
+            ):
                 try:
                     text = _extract_page_ocr(page)
                     ocr_pages.append(i)
@@ -284,6 +287,16 @@ def extract_pdf(path) -> ExtractedDocument:
         pages=page_infos,
         ocr_pages=ocr_pages,
     )
+
+
+# ---------------------------------------------------------------------
+# Service-level helper: extract a PDF and return its cleaned text
+# ---------------------------------------------------------------------
+
+def extract_text(path, use_ocr: bool = True) -> str:
+    """Extract the cleaned text of a PDF. With use_ocr=False the
+    native text layer is used as-is (no OCR fallback)."""
+    return extract_pdf(path, use_ocr=use_ocr).text
 
 
 # -------------------------
@@ -339,6 +352,12 @@ def remove_markdown(text):
 # -------------------------
 
 def hazm_normalize_text(text):
+
+    # import here so extraction works without hazm installed
+    try:
+        from hazm import Normalizer
+    except ImportError:
+        return text
 
     normalizer = Normalizer()
 

@@ -1,9 +1,13 @@
+from pathlib import Path
+
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.crud.document import document_crud
 from app.models.document.document import Doc
 from app.models.identity.user import User
 from app.schemas.document_schema import DocumentUpdate
+from app.services.document_extraction import extract_text
 
 
 async def create_document(
@@ -14,13 +18,53 @@ async def create_document(
     current_user: User,
     ) -> Doc:
 
-    return await document_crud.create_document(
+    document = await document_crud.create_document(
         db=db,
         title=title,
         organization_id=organization_id,
         file=file,
         user_id=current_user.user_id,
     )
+
+    try:
+        extracted_path = _save_extracted_text(document.file_path)
+    except Exception:
+        # Rejecting the whole upload: no document without extracted
+        # text is ever kept in the database or in storage.
+        document_crud.delete_document(db, document)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not extract text from the uploaded PDF",
+        )
+
+    document_crud.set_extracted_path(
+        db,
+        document,
+        extracted_path,
+    )
+
+    return document
+
+
+def _save_extracted_text(file_path: str) -> str:
+    """Extract the PDF text next to the original file and return the
+    path of the saved .txt file."""
+    extracted = extract_text(file_path, use_ocr=False)
+
+    if not extracted.strip():
+        raise ValueError("no text could be extracted from the PDF")
+
+    extracted_path = (
+        Path(file_path)
+        .with_name("extracted.txt")
+    )
+
+    extracted_path.write_text(
+        extracted,
+        encoding="utf-8",
+    )
+
+    return str(extracted_path)
 
 
 def get_document(

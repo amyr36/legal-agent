@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     DATABASE_URL: str = DEFAULT_DATABASE_URL
+    STORAGE_DIR: str = "/app/storage"
 
     LLM_PROVIDER: str = "avalai"
     AVALAI_API_KEY: str | None = None

@@ -39,6 +39,12 @@ class Doc(Base):
 
     file_path: Mapped[str] = mapped_column(String, nullable=False)
 
+    extracted_path: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+    )
+
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.organization_id", ondelete="CASCADE"),
         nullable=False,
