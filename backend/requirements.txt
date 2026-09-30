@@ -7,3 +7,5 @@ pyjwt>=2.10,<3.0
 pwdlib[argon2]>=0.2,<1.0
 python-multipart>=0.0.20,<1.0
 aiofiles
+sentence-transformers
+chromadb

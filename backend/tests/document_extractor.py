@@ -7,7 +7,7 @@ import fitz
 
 TEST_DIR = Path(__file__).parent
 PDF_FILE = TEST_DIR / "documents" / "hormuz.pdf"
-OUTPUT_DIR = TEST_DIR / "output"
+OUTPUT_DIR = TEST_DIR / "output2"
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -83,7 +83,7 @@ def main() -> None:
 
     print("Extracting with PyMuPDF...")
     pymupdf_text = extract_with_pymupdf(PDF_FILE)
-    save_result("pymupdf.txt", pymupdf_text)
+    save_result("pymupdf_1.txt", pymupdf_text)
 
     print("\nExtraction completed.")
 

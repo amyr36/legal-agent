@@ -47,7 +47,7 @@ except ImportError:
 
 TEST_DIR = Path(__file__).parent
 PDF_FILE = TEST_DIR / "documents" / "test.pdf"
-OUTPUT_DIR = TEST_DIR / "output"
+OUTPUT_DIR = TEST_DIR / "output2"
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -340,7 +340,7 @@ def main():
     extracted_text = normalize_text(extracted_text)
     extracted_text = fix_spacing(extracted_text)
 
-    save_result("pymupdf_v5_ocr_fallback.txt", extracted_text)
+    save_result("pymupdf_last_2.txt", extracted_text)
 
     print("\nExtraction completed.")
 
