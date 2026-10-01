@@ -1,5 +1,6 @@
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -25,19 +26,27 @@ router = APIRouter(
 
 @router.post("/", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 async def create_document(
+    background_tasks: BackgroundTasks,
     title: str = Form(..., min_length=1, max_length=255),
     organization_id: int = Form(..., gt=0),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await document_service.create_document(
+    document = await document_service.create_document(
         db=db,
         title=title,
         organization_id=organization_id,
         file=file,
         current_user=current_user,
     )
+
+    background_tasks.add_task(
+        document_service.run_structure_extraction,
+        document.doc_id,
+    )
+
+    return document
 
 
 @router.get("/", response_model=list[DocumentRead])
@@ -121,3 +130,24 @@ def delete_document(
         )
 
     return None
+
+
+@router.get("/{document_id}/structure")
+def get_document_structure(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    data = document_service.read_structure(
+        db=db,
+        document_id=document_id,
+        current_user=current_user,
+    )
+
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Structured data not found",
+        )
+
+    return data

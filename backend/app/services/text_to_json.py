@@ -276,12 +276,24 @@ def _make_client():
     return OpenAI(api_key=api_key, base_url=base_url)
 
 
-def _parse_json(raw: str) -> dict:
+def _parse_json(raw: str) -> list[dict]:
     cleaned = raw.strip()
-    # Some models wrap JSON in a Markdown fence despite instructions
-    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned)
-    return json.loads(cleaned)
 
+    cleaned = re.sub(
+        r"^```(?:json)?\s*|\s*```$",
+        "",
+        cleaned
+    )
+
+    result = json.loads(cleaned)
+
+    if not isinstance(result, list):
+        raise ValueError("Model output must be a JSON array")
+
+    if not all(isinstance(item, dict) for item in result):
+        raise ValueError("Every JSON array item must be an object")
+
+    return result
 
 def call_model(client, chunk: PreparedChunk) -> dict:
     """Return the parsed JSON for one chunk. Network/API errors propagate

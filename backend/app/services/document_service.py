@@ -317,7 +317,7 @@ def run_structure_extraction(document_id: int) -> None:
         if document is None or not document.extracted_path:
             return
 
-        document_crud.mark_structure_status(db, document, "running")
+        document_crud.mark_structure_status(db, document, "processing")
 
         text = document_crud.resolve_storage_path(
             document.extracted_path

@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     AVALAI_API_KEY: str | None = None
     AVALAI_BASE_URL: str = "https://api.avalai.ir/v1"
     AVALAI_MODEL: str | None = None
+    STRUCTURE_MODEL: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
