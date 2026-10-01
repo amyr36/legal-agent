@@ -45,6 +45,20 @@ class Doc(Base):
         default=None,
     )
 
+    extracted_path: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+    )
+ 
+    # pending | processing | done | partial | failed  (LLM structuring job)
+    structure_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.organization_id", ondelete="CASCADE"),
         nullable=False,

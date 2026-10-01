@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -16,8 +25,8 @@ router = APIRouter(
 
 @router.post("/", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 async def create_document(
-    title: str = Form(...),
-    organization_id: int = Form(...),
+    title: str = Form(..., min_length=1, max_length=255),
+    organization_id: int = Form(..., gt=0),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -33,12 +42,18 @@ async def create_document(
 
 @router.get("/", response_model=list[DocumentRead])
 def get_documents(
+    organization_id: int | None = Query(None, gt=0),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     return document_service.get_documents(
         db=db,
         current_user=current_user,
+        organization_id=organization_id,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -63,7 +78,8 @@ def get_document(
     return document
 
 
-@router.put("/{document_id}", response_model=DocumentRead)
+# PATCH, because only the fields that are sent are updated
+@router.patch("/{document_id}", response_model=DocumentRead)
 def update_document(
     document_id: int,
     data: DocumentUpdate,

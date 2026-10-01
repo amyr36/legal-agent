@@ -1,84 +1,110 @@
 from pathlib import Path
-import aiofiles
-from fastapi import HTTPException, UploadFile, status
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.file_config import (
-    ALLOWED_EXTENSIONS,
-    ALLOWED_MIME_TYPES,
-    MAX_FILE_SIZE,
-)
 from app.models.document.document import Doc
 
 
-STORAGE_DIR = Path(settings.STORAGE_DIR)
+STORAGE_DIR = Path(settings.STORAGE_DIR).resolve()
+
+EXTRACTED_TEXT_NAME = "extracted.txt"
+EXTRACTED_META_NAME = "extracted.json"
+STRUCTURED_JSON_NAME = "structured.json"
 
 
-async def create_document(
+# ---------------------------------------------------------------------
+# Storage helpers
+# ---------------------------------------------------------------------
+
+def document_dir(doc_id: int) -> Path:
+    """Folder that holds every file of one document."""
+    return STORAGE_DIR / "docs" / str(doc_id)
+
+
+def to_relative(path: Path) -> str:
+    """Path as stored in the database: relative to STORAGE_DIR."""
+    return path.resolve().relative_to(STORAGE_DIR).as_posix()
+
+
+def resolve_storage_path(stored_path: str) -> Path:
+    """
+    Turn a stored path into an absolute path, refusing anything that
+    escapes STORAGE_DIR. Works for new relative paths and for old rows
+    that stored an absolute path inside STORAGE_DIR.
+    """
+    path = (STORAGE_DIR / stored_path).resolve()
+    if path != STORAGE_DIR and STORAGE_DIR not in path.parents:
+        raise ValueError("Stored path points outside the storage directory")
+    return path
+
+
+def remove_document_files(
+    file_path: str | None,
+    extracted_path: str | None,
+) -> None:
+    """Best-effort removal of a document's files. Never raises."""
+    if not file_path:
+        return
+
+    try:
+        original = resolve_storage_path(file_path)
+        folder = original.parent
+
+        targets = [original, folder / EXTRACTED_META_NAME, folder / STRUCTURED_JSON_NAME]
+        if extracted_path:
+            targets.append(resolve_storage_path(extracted_path))
+
+        for target in targets:
+            target.unlink(missing_ok=True)
+
+        # Remove the document's own folder when it is now empty
+        if folder != STORAGE_DIR:
+            folder.rmdir()
+    except (OSError, ValueError):
+        pass
+
+def structured_path_for(
+    doc_id: int
+    )-> Path:
+    return document_dir(doc_id) / STRUCTURED_JSON_NAME
+
+
+# ---------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------
+
+
+def mark_structure_status(
+    db: Session,
+    document: Doc,
+    status: str,
+    structured_path: str | None = None,
+) -> Doc:
+    """Update structure status (and path on success) in one place."""
+    document.structure_status = status
+    if structured_path is not None:
+        document.structured_path = structured_path
+    db.commit()
+    db.refresh(document)
+    return document
+
+def add_document(
     db: Session,
     title: str,
     organization_id: int,
-    file: UploadFile,
     user_id: int,
 ) -> Doc:
-
-    # 1. Validating the uploaded file (PDF only, max 20 MB)
-    extension = Path(file.filename or "").suffix.lower()
-
-    if extension not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF files are accepted",
-        )
-
-    if (
-        file.content_type
-        and file.content_type != "application/octet-stream"
-        and file.content_type not in ALLOWED_MIME_TYPES
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF files are accepted",
-        )
-
-    content = await file.read()
-
-    if not content:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file is empty",
-        )
-
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File size exceeds the 20 MB limit",
-        )
-
+    """Insert the row and flush to get doc_id. Does NOT commit."""
     document = Doc(
-        user_id=user_id,
+        user_id=user_id,  # uploader
         title=title,
         organization_id=organization_id,
         file_path="",
     )
     db.add(document)
     db.flush()
-
-    # 2. Storing file in storage
-    file_dir = STORAGE_DIR / str(user_id) / str(document.doc_id)
-    file_dir.mkdir(parents=True, exist_ok=True)
-    file_path = file_dir / f"original{extension}"
-
-    async with aiofiles.open(file_path, "wb") as out:
-        await out.write(content)
-
-    # 3. Updating file path
-    document.file_path = str(file_path)
-
-    db.commit()
-    db.refresh(document)
     return document
 
 
@@ -86,22 +112,35 @@ def get_document(
     db: Session,
     document_id: int,
 ) -> Doc | None:
-    statement = select(Doc).where(
-        Doc.doc_id == document_id
+    return db.scalar(
+        select(Doc).where(Doc.doc_id == document_id)
     )
 
-    return db.scalar(statement)
 
-
-def get_documents_by_user(
+def organization_exists(
     db: Session,
-    user_id: int,
+    organization_id: int,
+) -> bool:
+    # Resolve the Organization class through the Doc relationship so this
+    # file does not need to know where the Organization model lives.
+    organization_model = Doc.organization.property.mapper.class_
+    return db.get(organization_model, organization_id) is not None
+
+
+def get_documents(
+    db: Session,
+    organization_id: int | None = None,
     skip: int = 0,
     limit: int = 100,
 ) -> list[Doc]:
+    statement = select(Doc)
+
+    if organization_id is not None:
+        statement = statement.where(Doc.organization_id == organization_id)
+
     statement = (
-        select(Doc)
-        .where(Doc.user_id == user_id)
+        statement
+        .order_by(Doc.created_at.desc(), Doc.doc_id.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -115,46 +154,18 @@ def update_document(
 ) -> Doc:
     db.commit()
     db.refresh(document)
-
-    return document
-
-
-def set_extracted_path(
-    db: Session,
-    document: Doc,
-    extracted_path: str,
-) -> Doc:
-    document.extracted_path = extracted_path
-    db.commit()
-    db.refresh(document)
-
     return document
 
 
 def delete_document(
     db: Session,
     document: Doc,
-    ) -> None:
-    # Deleting file from storage
-    if document.file_path:
-        Path(document.file_path).unlink(missing_ok=True)
-
-    # Deleting extracted text file from storage
-    if document.extracted_path:
-        Path(document.extracted_path).unlink(missing_ok=True)
-
-    # Removing the document's own storage folder when it is now empty
-    if document.file_path:
-        try:
-            Path(document.file_path).parent.rmdir()
-        except OSError:
-            pass
+) -> None:
+    """Delete the row first; only then remove files (best effort)."""
+    file_path = document.file_path
+    extracted_path = document.extracted_path
 
     db.delete(document)
     db.commit()
 
-
-
-
-     
-
+    remove_document_files(file_path, extracted_path)
