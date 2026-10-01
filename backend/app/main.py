@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
 
-from app.api.routers import document_router
-from app.api.routers import auth_router
+from app.api.routers import document_router, analyses_router, auth_router
+
 from app.core.config import settings
 from app.db.base import Base
 from app.db.database import engine, SessionLocal
@@ -70,7 +70,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
     allow_headers=["Accept", "Content-Type"],
 )
-app.include_router(analyses.router)
+app.include_router(analyses_router.router)
 app.include_router(auth_router.router, prefix=settings.API_PREFIX)
 app.include_router(document_router.router, prefix=settings.API_PREFIX)
 
