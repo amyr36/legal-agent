@@ -8,10 +8,10 @@ from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 
-from core.config import TOP_K ,CHECKPOINT_DB ,CANDIDATES_PATH ,MAX_MISSING_RATIO
-from services import vector_store as vss
-from services.llm_analisis import analyze_all_pairs, get_chat_model, save_results
-from services.retrieval import deduplicate_pairs, retrieve_candidates
+from app.core.config import TOP_K ,CHECKPOINT_DB ,CANDIDATES_PATH ,MAX_MISSING_RATIO
+from app.services import vector_store as vss
+from app.services.llm_analisis import analyze_all_pairs, get_chat_model, save_results
+from app.services.retrieval import deduplicate_pairs, retrieve_candidates
 
 
 # ---------------------------------------------------------------------------

@@ -1,14 +1,15 @@
 from typing import Any, Dict, List, Optional
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 import json
 
-from services import workflow, llm_analisis, retrieval
-from core.config import SOURCES_DIR
+from app.services import workflow, llm_analisis, retrieval
+from app.core.config import SOURCES_DIR
+from app.api.dependencies import get_current_user
 
 
-router = APIRouter(prefix="/analyze", tags=["analyze"])
+router = APIRouter(prefix="/analyze", tags=["analyze"], dependencies=[Depends(get_current_user)])
 
 
 class AnalyzeRequest(BaseModel):

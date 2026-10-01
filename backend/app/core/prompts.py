@@ -1,4 +1,4 @@
-from core.config import (
+from app.core.config import (
     RELATION_TYPE_VALUES,
 )
 

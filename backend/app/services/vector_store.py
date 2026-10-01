@@ -5,7 +5,7 @@ from typing import Dict, List
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 
-from core.config import (
+from app.core.config import (
     DOCUMENT_SLOTS,
     EMBEDDING_MODEL,
     METADATA_FIELDS,

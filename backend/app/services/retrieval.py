@@ -1,8 +1,8 @@
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from services import vector_store as vss
-from core.config import TOP_K
+from app.services import vector_store as vss
+from app.core.config import TOP_K
 
 
 # ---------------------------------------------------------------------------

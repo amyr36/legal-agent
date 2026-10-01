@@ -7,9 +7,9 @@ from functools import lru_cache
 
 from langchain_openai import ChatOpenAI
 
-from services import vector_store as vss
-from core.config import SOURCES_DIR
-from core.config import (
+from app.services import vector_store as vss
+from app.core.config import SOURCES_DIR
+from app.core.config import (
     CHAT_MODEL_API_KEY,
     CHAT_MODEL_BASE_URL,
     CHAT_MODEL_NAME,
@@ -22,9 +22,9 @@ from core.config import (
     EFFORT_LEVEL,
     EFFORT_ON
 )
-from core.prompts import ANALYSIS_SYSTEM_PROMPT , build_batch_user_prompt
-from schemas.analysis import BatchAnalysisResult, AnalysisResult
-from services.retrieval import (
+from app.core.prompts import ANALYSIS_SYSTEM_PROMPT , build_batch_user_prompt
+from app.schemas.analysis import BatchAnalysisResult, AnalysisResult
+from app.services.retrieval import (
     deduplicate_pairs,
     records_by_id,
     retrieve_candidates,
