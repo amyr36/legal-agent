@@ -8,19 +8,16 @@ from functools import lru_cache
 from langchain_openai import ChatOpenAI
 
 from app.services import vector_store as vss
-from app.core.config import SOURCES_DIR
+from app.core.config import SOURCES_DIR, settings
 from app.core.config import (
-    CHAT_MODEL_API_KEY,
-    CHAT_MODEL_BASE_URL,
-    CHAT_MODEL_NAME,
+    EFFORT_LEVEL,
+    EFFORT_ON,
     LLM_BATCH_SIZE,
     LLM_MAX_RETRIES,
     MAX_CONCURRENT_REQUESTS,
     RELATION_TYPE_VALUES,
     RESULTS_PATH,
     TOP_K,
-    EFFORT_LEVEL,
-    EFFORT_ON
 )
 from app.core.prompts import ANALYSIS_SYSTEM_PROMPT , build_batch_user_prompt
 from app.schemas.analysis import BatchAnalysisResult, AnalysisResult
@@ -37,10 +34,12 @@ from app.services.retrieval import (
 
 @lru_cache(maxsize=1)
 def get_chat_model() -> ChatOpenAI:
+    if not settings.AVALAI_API_KEY:
+        raise RuntimeError("AVALAI_API_KEY is not configured in settings")
     return ChatOpenAI(
-        base_url=CHAT_MODEL_BASE_URL,
-        api_key=CHAT_MODEL_API_KEY,
-        model=CHAT_MODEL_NAME,
+        base_url=settings.AVALAI_BASE_URL,
+        api_key=settings.AVALAI_API_KEY,
+        model=settings.AVALAI_MODEL or settings.STRUCTURE_MODEL or "deepseek-v4.1-flash",
         reasoning_effort=EFFORT_LEVEL if EFFORT_ON else None,
     )
 

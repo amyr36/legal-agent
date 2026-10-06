@@ -13,9 +13,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # ---------------------------------------------------------------------------
 
 
-# core/config.py  →  core/  →  app/  →  backend
+# core/config.py → core/ → app/ → backend
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-SOURCES_DIR = os.path.join(BASE_DIR, "storage")
+
+# Analysis pipeline storage. Overridable so Docker can map the tracked
+# `backend/storage` dataset to a container path (ANALYSIS_STORAGE_DIR).
+ANALYSIS_STORAGE_DIR = os.environ.get("ANALYSIS_STORAGE_DIR", "").strip()
+SOURCES_DIR = ANALYSIS_STORAGE_DIR or os.path.join(BASE_DIR, "storage")
 RESULTS_PATH = os.path.join(BASE_DIR, "analysis_results.jsonl")
 
 DOCUMENT_SLOTS = {
@@ -73,12 +77,15 @@ MAX_CONCURRENT_REQUESTS = 2
 # ---------------------------------------------------------------------------
 # Chat model config
 # ---------------------------------------------------------------------------
+# The analysis pipeline uses the AVALAI provider configured via settings
+# (AVALAI_API_KEY / AVALAI_BASE_URL / AVALAI_MODEL in .env). These constants
+# only control the optional reasoning-effort toggles for that provider.
 
-CHAT_MODEL_BASE_URL = "https://api.apmix.ai/v1"
-CHAT_MODEL_API_KEY = "apx_live_1eEKs5DnQOq282Rl3JXfO0fXyg9UqlsnW2YA9GFz"
-CHAT_MODEL_NAME = "deepseek-v4-flash-free"
-EFFORT_ON = False
-EFFORT_LEVEL = "high"
+EFFORT_ON = (
+    os.environ.get("LLM_REASONING_EFFORT", "").strip().lower()
+    in {"1", "true", "yes", "on"}
+)
+EFFORT_LEVEL = os.environ.get("LLM_REASONING_EFFORT_LEVEL", "high")
 
 # ---------------------------------------------------------------------------
 # Legal relation taxonomy
@@ -112,7 +119,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     DATABASE_URL: str = DEFAULT_DATABASE_URL
-    STORAGE_DIR: str = "/app/storage"
+    STORAGE_DIR: str = str(Path(__file__).resolve().parents[3] / "storage")
 
     LLM_PROVIDER: str = "avalai"
     AVALAI_API_KEY: str | None = None

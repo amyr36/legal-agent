@@ -35,12 +35,18 @@ services:
     env_file:
       - .env
 
+    environment:
+      # Analysis pipeline data (context_A/context_B + FAISS indexes) lives in
+      # backend/storage and is mounted here, separate from uploaded documents.
+      ANALYSIS_STORAGE_DIR: /app/analysis_storage
+
     ports:
       - "8080:8000"
 
     volumes:
       - ./backend:/app
-      - ./storage:/app/storage 
+      - ./storage:/app/storage
+      - ./backend/storage:/app/analysis_storage
 
     depends_on:
       postgres:

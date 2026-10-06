@@ -37,8 +37,8 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 API_KEY = settings.AVALAI_API_KEY
-BASE_URL = "https://api.avalai.ir/v1"
-MODEL = "deepseek-v4.1-flash"
+BASE_URL = settings.AVALAI_BASE_URL
+MODEL = settings.STRUCTURE_MODEL or settings.AVALAI_MODEL or "deepseek-v4.1-flash"
 
 REQUEST_TIMEOUT = 300   # seconds per model call
 MAX_ATTEMPTS = 2        # retried on API errors and on output with no usable record
