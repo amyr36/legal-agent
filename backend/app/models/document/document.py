@@ -2,7 +2,6 @@
 from datetime import datetime
 
 from app.db.base import Base
-from app.models.document.association_table import docs_to_keywords
 
 from sqlalchemy.orm import (
     Mapped,
@@ -15,7 +14,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Text,
     func
 )
 
@@ -75,18 +73,6 @@ class Doc(Base):
         back_populates="documents"
     )
 
-    # many-to-many
-    keywords = relationship(
-        "Keyword",
-        secondary=docs_to_keywords,
-        back_populates="documents"
-    )
-
-    versions = relationship(
-        "DocVersion",
-        back_populates="document",
-        cascade="all, delete-orphan",
-    )
 
     analyses = relationship(
         "Analysis",
@@ -96,12 +82,6 @@ class Doc(Base):
 
     domains = relationship(
         "Domain",
-        back_populates="document",
-        cascade="all, delete-orphan",
-    )
-
-    nodes = relationship(
-        "DocNode",
         back_populates="document",
         cascade="all, delete-orphan",
     )

@@ -48,9 +48,3 @@ class Analysis(Base):
         "Doc",
         back_populates="analyses"
     )
-
-    keywords = relationship(
-        "AnalysisKeyword",
-        back_populates="analysis",
-        cascade="all, delete-orphan",
-    )

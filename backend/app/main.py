@@ -18,14 +18,9 @@ from app.db.database import engine, SessionLocal
 # Register all SQLAlchemy models at startup so Base.metadata sees every table.
 from app.models import (
     Analysis,
-    AnalysisKeyword,
     Doc,
-    DocNode,
     DocRelationship,
-    DocVersion,
     Domain,
-    Keyword,
-    NodeRelationship,
     Organization,
     RelationshipType,
     Role,
