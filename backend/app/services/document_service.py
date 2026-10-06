@@ -300,11 +300,13 @@ def delete_document(
 #
 # Runs AFTER the request returns. Opens its own DB session because the
 # request-scoped session from get_db is already closed by then.
+#
+# The result is stored as a JSONL file (one JSON object per line), not JSON.
 # ---------------------------------------------------------------------
 
 
 def run_structure_extraction(document_id: int) -> None:
-    """Structure the extracted text with the LLM and store the JSON."""
+    """Structure the extracted text with the LLM and store the result as JSONL."""
     # Local imports: keep module load light and avoid a hard dependency
     from app.db.database import SessionLocal
     from app.services.text_to_json import structure_text
@@ -325,20 +327,38 @@ def run_structure_extraction(document_id: int) -> None:
 
         result = structure_text(text)
 
-        json_path = document_crud.structured_path_for(document_id)
-        json_path.write_text(
-            json.dumps(result.data, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        # An empty or cut-off result must not be stored as "done":
+        # downstream steps (RAG, comparison) would silently work on partial data.
+        if result.failed_chunks or not result.records:
+            raise RuntimeError(f"structuring gave no usable result: {result.meta}")
+
+        # structured_path_for() may still return a ".json" name: force ".jsonl"
+        jsonl_path = document_crud.structured_path_for(document_id).with_suffix(".jsonl")
+        result.write_jsonl(jsonl_path)
 
         document_crud.mark_structure_status(
             db, document, "done",
-            structured_path=document_crud.to_relative(json_path),
+            structured_path=document_crud.to_relative(jsonl_path),
         )
+
+        meta = result.meta
         logger.info(
-            "Structured document %s: %d chunks, %d failed",
-            document_id, result.total_chunks, result.failed_chunks,
+            "Structured document %s: %d records",
+            document_id, len(result.records),
         )
+        if (
+            meta.get("unverified_ids")
+            or meta.get("missing_article_numbers")
+            or meta.get("suspect_ids")
+        ):
+            logger.warning(
+                "Structured document %s needs review: unverified=%s "
+                "missing_articles=%s suspect=%s",
+                document_id,
+                meta.get("unverified_ids"),
+                meta.get("missing_article_numbers"),
+                meta.get("suspect_ids"),
+            )
 
     except Exception:
         logger.exception("Structure extraction failed for document %s", document_id)
@@ -355,11 +375,18 @@ def read_structure(
     db: Session,
     document_id: int,
     current_user: User,
-) -> dict | None:
-    """Return the structured JSON for a document, or None."""
+) -> list[dict] | None:
+    """Return the structured records (parsed from the JSONL file), or None."""
     document = document_crud.get_document(db, document_id)
     if document is None or not document.structured_path:
         return None
 
     path = document_crud.resolve_storage_path(document.structured_path)
-    return json.loads(path.read_text(encoding="utf-8"))
+
+    records: list[dict] = []
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    return records
