@@ -1,393 +1,365 @@
 """
-Structure extraction for Persian legal text (structure-aware chunking + LLM).
+Structure extraction for Persian bills (single LLM call, no chunking).
 
-This is the former `text_to_json.py`, turned into an importable module:
-  - no hardcoded API key: credentials come from app settings
-  - no hardcoded input/output paths: `structure_text(text)` takes the text
-    and returns the result; the caller decides where to store it
-  - logging instead of print, one retry on invalid JSON
+Used by `document_service.run_structure_extraction`:
+`structure_text(text)` takes the extracted text and returns a
+`StructureResult`. The output is JSONL (one JSON object per line):
 
-The chunking logic, section anchors, prompt and merge behaviour are
-unchanged from your script.
+    result = structure_text(text)
+    result.write_jsonl("structured.jsonl")
 
-Settings used (app.core.config.settings):
-  AVALAI_API_KEY      required
-  AVALAI_BASE_URL     optional, default https://api.avalai.ir/v1
-  STRUCTURE_MODEL     optional, default deepseek-v4.1-flash
+Speed: the model does NOT rewrite the text. The input is sent as numbered
+lines ("[12] ...") and the model only returns, for every part (title,
+preamble, each article), the first and last line number. The program cuts
+the text out of the input itself. The model output is therefore a few short
+JSON lines instead of the whole bill, and the text in every record is
+exactly the text of the input (nothing can be dropped or reworded).
+
+One record per top-level article of the bill (with its clauses, notes and
+quoted text inside), plus one title record and one preamble record.
+`id` and `doc_title` are added by code.
 """
 
 import json
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+from openai import OpenAI
 
 from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BASE_URL = settings.AVALAI_BASE_URL
-DEFAULT_MODEL = settings.AVALAI_MODEL
+API_KEY = settings.AVALAI_API_KEY
+BASE_URL = "https://api.avalai.ir/v1"
+MODEL = "deepseek-v4.1-flash"
 
-# Soft cap for chunk size (characters). An atomic unit is never split;
-# a single unit larger than the cap is kept whole.
-MAX_CHUNK_SIZE = 1500
+REQUEST_TIMEOUT = 300   # seconds per model call
+MAX_ATTEMPTS = 2        # retried on API errors and on output with no usable record
+RETRY_BACKOFF = 3.0     # seconds, multiplied by the attempt number
 
-# Concurrent requests to the model. Lower it if you hit rate limits.
-MAX_WORKERS = 6
-
-MAX_ATTEMPTS = 2        # per chunk, only retried on invalid JSON
-REQUEST_TIMEOUT = 120   # seconds per model call
+VALID_KINDS = {"title", "preamble", "article"}
 
 
-# ---------------------------------------------------------------------------
-# 1) Semantic boundaries and section "kind"
-# ---------------------------------------------------------------------------
+SYSTEM_PROMPT = r"""
+You are a parser for Persian parliamentary bills (طرح / لایحه).
+The input is text extracted from a PDF, one line per row. Every row starts with its
+line number in square brackets, for example: "[12] متن خط". The text may be noisy:
+misplaced parentheses and dashes, words out of place, checkbox options such as
+"است / نیست".
 
-# Each anchor: (regex, kind, contextual guidance given to the model)
-SECTION_ANCHORS = [
-    (r"عنوان\s*طرح\s*:", "operative_text",
-     "توجه: در این بخش، عدد ابتدای خط (1، 2، 3...) شمارهٔ «ماده» است، نه «بند». "
-     "متن‌های شروع‌شده با «تبصره» را داخل فیلد تبصرهٔ همان ماده قرار بده."),
+Goal: LOCATE the parts listed below, so that each article can later be compared with
+articles of another bill. You do NOT copy any text. For every part you return only
+the line number where it starts and the line number where it ends (both inclusive,
+numbers taken from the brackets). The program cuts the text out by itself.
 
-    (r"نظر\s*اداره\s*کل\s*تدوین\s*قوانین", "review_tadvin",
-     "توجه: در این بخش، عدد ابتدای خط شمارهٔ «بند» نظر کارشناسی است، نه «ماده»."),
+OUTPUT RECORDS (in document order; line ranges must not overlap)
+1. Exactly one record with kind "title": the line(s) holding the title of the bill
+   (the line that starts with «عنوان طرح:», possibly continuing on the next line,
+   or otherwise the bill title).
+2. At most one record with kind "preamble": the justification section
+   (مقدمه / دلایل توجیهی). Start at the first line of its body, not at its heading,
+   and end before the signatory names.
+3. One record with kind "article" per TOP-LEVEL article of the bill
+   (ماده 1, ماده 2, ...), in order.
 
-    (r"نظر\s*اداره\s*کل\s*اسناد\s*و\s*تنقیح\s*قوانین", "review_asnad",
-     "توجه: در این بخش، عدد ابتدای خط شمارهٔ «بند» نظر ادارهٔ اسناد است، نه «ماده»."),
+ARTICLE RULES
+- An article starts at the line that contains its "ماده N" and ends at the last line
+  that belongs to it, just before the next top-level article, the next chapter
+  heading, or the end of the bill body. Its range covers everything inside: the
+  opening sentence, quoted replacement text «...», numbered clauses (بند), notes
+  (تبصره) and any article nested inside a quotation.
+- NEVER split one article into several records. Never create a record for a clause,
+  a note, or a nested article.
+- Top-level articles are numbered consecutively (1, 2, 3, ...). A number such as
+  "ماده 22", "ماده 22 مکرر", "تبصره 1" or "1 _ ..." that appears inside a quotation
+  «...» or after a sentence like "به شرح زیر اصلاح میشود" / "الحاق میگردد" belongs
+  to the law being amended: it stays inside the enclosing top-level article.
+- Chapter headings (فصل ...) are not part of any article range. For each article give
+  in "chapter_line" the line number of the nearest preceding chapter heading;
+  null if the bill has no chapters.
+- "number": integer value of the top-level article number. "number_raw": as written
+  (e.g. "ماده 4"). Keep numbers as they are even if they skip or repeat.
+- "amends_law" / "amends_article": if the article amends, adds to or repeals a
+  provision of ANOTHER law, give that law and that article exactly as written in the
+  article's own sentence (e.g. "قانون حمایت خانواده" and "ماده (22)"). If it only
+  refers to a part of the amended article, give the article (e.g. "ماده (1130)").
+  If the article is an ordinary provision of the bill itself, both are null.
+  Do not guess.
 
-    (r"دلایل\s*توجیهی|مقدمه", "intro_reasons",
-     "توجه: در این بخش، عدد ابتدای خط شمارهٔ «بند» دلایل توجیهی مقدمه است، نه «ماده»."),
+WHAT TO LEAVE OUT (no record, and inside no range)
+- Before the body: registration number (شماره ثبت), term/session line, "عادی",
+  referral commissions (کمیسیون های ارجاعی), «معاونت قوانین», «باسمه تعالی»,
+  the letter to «ریاست محترم مجلس», lists of signatories and their names.
+- The bill body ends where the cover letter addressed to
+  «هیأت رئیسه محترم مجلس شورای اسلامی» begins. Everything from that letter to the
+  end of the input is ignored: the opinions of the legal offices
+  (نظر اداره‌کل تدوین قوانین / اسناد و تنقیح قوانین), forms with checkbox options,
+  signatures of officials, attachments (ضمیمه) and lists of related laws.
 
-    (r"ضمیمه\s*نظر", "attachment",
-     "توجه: این بخش «پیوست» سند است."),
-]
+FIELDS (every record has all of them)
+{"kind": "title"|"preamble"|"article",
+ "number": integer|null, "number_raw": string|null,
+ "start_line": integer, "end_line": integer,
+ "chapter_line": integer|null,
+ "amends_law": string|null, "amends_article": string|null}
+For title and preamble records number, number_raw, chapter_line, amends_law and
+amends_article are null.
 
-# Finer boundaries that must never be cut in the middle
-ATOMIC_BOUNDARY_PATTERN = re.compile(
-    r"(?m)^(?:"
-    r"باب\s*\S+|"
-    r"فصل\s*\S+|"
-    r"ماده\s*[\)\(]?\s*\d+|"
-    r"تبصره\s*[\-–:]?\s*(?:یک|دو|سه|چهار|پنج|شش|هفت|هشت|نه|ده|\d+)|"
-    r"پیوست\b|"
-    r"\d+\s"  # bare leading numbers (articles/clauses without a keyword)
-    r")"
-)
+EXAMPLE (invented)
+{"kind":"title","number":null,"number_raw":null,"start_line":6,"end_line":7,"chapter_line":null,"amends_law":null,"amends_article":null}
+{"kind":"article","number":2,"number_raw":"ماده 2","start_line":24,"end_line":31,"chapter_line":19,"amends_law":"قانون الف","amends_article":"ماده (5)"}
 
-
-@dataclass
-class Section:
-    kind: str
-    guidance: str
-    text: str
-
-
-def split_into_sections(text: str) -> list[Section]:
-    """Split the document into large kind-tagged sections using the anchors."""
-    positions = []
-    for pattern, kind, guidance in SECTION_ANCHORS:
-        for m in re.finditer(pattern, text):
-            positions.append((m.start(), kind, guidance))
-
-    positions.sort(key=lambda x: x[0])
-
-    if not positions or positions[0][0] > 0:
-        # Text before the first anchor (registration number, commissions...)
-        positions.insert(0, (0, "generic",
-                              "توجه: این بخش شامل اطلاعات کلی سند (شماره ثبت، کمیسیون‌ها) است."))
-
-    sections = []
-    for i, (start, kind, guidance) in enumerate(positions):
-        end = positions[i + 1][0] if i + 1 < len(positions) else len(text)
-        sections.append(Section(kind=kind, guidance=guidance, text=text[start:end]))
-
-    return sections
-
-
-def split_into_atomic_units(section_text: str) -> list[str]:
-    """Split a section into atomic units (one boundary to the next)."""
-    matches = list(ATOMIC_BOUNDARY_PATTERN.finditer(section_text))
-    if not matches:
-        return [section_text]
-
-    units = []
-    if matches[0].start() > 0:
-        units.append(section_text[: matches[0].start()])
-
-    for i, m in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(section_text)
-        units.append(section_text[m.start(): end])
-
-    return [u for u in units if u.strip()]
-
-
-def pack_units_into_chunks(units: list[str], max_size: int) -> list[str]:
-    """Pack atomic units into chunks up to max_size; never splits a unit."""
-    chunks = []
-    current = ""
-
-    for unit in units:
-        if current and len(current) + len(unit) > max_size:
-            chunks.append(current)
-            current = unit
-        else:
-            current += unit
-
-    if current:
-        chunks.append(current)
-
-    return chunks
-
-
-@dataclass
-class PreparedChunk:
-    text: str
-    kind: str
-    guidance: str
-
-
-def build_chunks(text: str) -> list[PreparedChunk]:
-    prepared = []
-    for section in split_into_sections(text):
-        units = split_into_atomic_units(section.text)
-        for packed in pack_units_into_chunks(units, MAX_CHUNK_SIZE):
-            prepared.append(
-                PreparedChunk(text=packed, kind=section.kind, guidance=section.guidance)
-            )
-    return prepared
-
-
-# ---------------------------------------------------------------------------
-# 2) System prompt (base + per-chunk contextual guidance)
-# ---------------------------------------------------------------------------
-
-BASE_SYSTEM_PROMPT = r"""
-You are an expert legal document parser.
-
-Task:
-Convert the provided legal, regulatory, administrative, policy, contract, directive, circular, guideline, or legislative document into structured JSONL records.
-
-Requirements:
-
-1. Preserve the document hierarchy.
-   Possible hierarchy levels may include:
-   - Title
-   - Part
-   - Book
-   - Section
-   - Chapter
-   - Subchapter
-   - Article
-   - Clause
-   - Paragraph
-   - Note
-   - Appendix
-   - Amendment
-   - Any equivalent legal structure
-
-2. Generate one JSON object per logical legal unit.
-
-3. For each unit extract:
-
-{
-  "id": integer,
-  "law_seq": integer,
-  "category": string|null,
-  "law": string|null,
-  "book": string|null,
-  "chapter": string|null,
-  "subchapter": string|null,
-  "type": string,
-  "number_raw": string|null,
-  "number": integer|null,
-  "parent_number": integer|null,
-  "text": string,
-  "breadcrumb": string
-}
-
-Field Rules:
-
-- id: sequential record id.
-- law_seq: document sequence number (start from 0 if unknown).
-- category: high-level category if explicitly available.
-- law: law or regulation name if identifiable.
-- book/chapter/subchapter: nearest hierarchical titles.
-- type: legal unit type.
-- number_raw: original numbering exactly as written.
-- number: normalized numeric value when possible.
-- parent_number: parent article/clause number when applicable.
-- text: full content of the legal unit.
-- breadcrumb: full hierarchy path from document title to current node.
-
-Hierarchy Rules:
-
-- Detect hierarchical relationships automatically.
-- Notes, clauses, subclauses, appendices and amendments must remain attached to their parent unit.
-- Do not merge unrelated legal units.
-- Preserve legal wording exactly.
-- Do not summarize.
-- Do not rewrite.
-- Do not interpret.
-
-Output Rules:
-
-- Return ONLY valid JSONL.
-- One JSON object per line.
-- No markdown.
-- No explanations.
-- No comments.
-- No extra text.
-
-Example:
-
-{"id":1,"law_seq":0,"category":null,"law":null,"book":"Document Title","chapter":null,"subchapter":null,"type":"Title","number_raw":null,"number":null,"parent_number":null,"text":"Document Title","breadcrumb":"Document Title"}
-
-Document:
-{{LEGAL_DOCUMENT_TEXT}}
-
-Return only valid JSONL.
+OUTPUT FORMAT (strict)
+- ONLY JSONL: one JSON object per line, no array brackets, no markdown fences, no
+  comments, no extra text.
+- Do not output any text of the bill and do not output id fields.
 """
 
 
-def build_system_prompt(guidance: str) -> str:
-    return BASE_SYSTEM_PROMPT + "\n\nCONTEXT GUIDANCE FOR THIS CHUNK:\n" + guidance
-
-
 # ---------------------------------------------------------------------------
-# 3) Model call
+# Input numbering, parsing and normalisation
 # ---------------------------------------------------------------------------
 
-def _get_model_name() -> str:
-    return getattr(settings, "STRUCTURE_MODEL", None) or DEFAULT_MODEL
+def _number_lines(text: str) -> tuple[list[str], str]:
+    """Split the text into non-empty lines and build the numbered prompt input."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    numbered = "\n".join(f"[{i}] {ln}" for i, ln in enumerate(lines, start=1))
+    return lines, numbered
 
 
-def _make_client():
-    # Imported lazily so the rest of the app starts without the package
-    from openai import OpenAI
-
-    api_key = getattr(settings, "AVALAI_API_KEY", None)
-    if not api_key:
-        raise RuntimeError("AVALAI_API_KEY is not configured in settings")
-
-    base_url = getattr(settings, "AVALAI_BASE_URL", None) or DEFAULT_BASE_URL
-    return OpenAI(api_key=api_key, base_url=base_url)
+_DECODER = json.JSONDecoder(strict=False)  # tolerate raw newlines inside strings
 
 
-def _parse_json(raw: str) -> list[dict]:
-    cleaned = raw.strip()
+def _parse_output(raw: str) -> list[dict]:
+    """Turn the model answer (JSONL, concatenated objects or a JSON array)
+    into a list of dicts. A broken line only loses that line."""
+    s = re.sub(r"<think>.*?</think>", "", raw, flags=re.S).strip()
+    s = re.sub(r"^```[a-zA-Z]*\s*", "", s)
+    s = re.sub(r"\s*```$", "", s)
 
-    cleaned = re.sub(
-        r"^```(?:json)?\s*|\s*```$",
-        "",
-        cleaned
-    )
-
-    result = json.loads(cleaned)
-
-    if not isinstance(result, list):
-        raise ValueError("Model output must be a JSON array")
-
-    if not all(isinstance(item, dict) for item in result):
-        raise ValueError("Every JSON array item must be an object")
-
-    return result
-
-def call_model(client, chunk: PreparedChunk) -> dict:
-    """Return the parsed JSON for one chunk. Network/API errors propagate
-    (the caller records them); invalid JSON is retried once."""
-    raw = ""
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        response = client.chat.completions.create(
-            model=_get_model_name(),
-            messages=[
-                {"role": "system", "content": build_system_prompt(chunk.guidance)},
-                {"role": "user", "content": chunk.text},
-            ],
-            timeout=REQUEST_TIMEOUT,
-        )
-        raw = response.choices[0].message.content or ""
+    records: list[dict] = []
+    pos, n = 0, len(s)
+    while pos < n:
+        while pos < n and (s[pos].isspace() or s[pos] == ","):
+            pos += 1
+        if pos >= n:
+            break
         try:
-            return _parse_json(raw)
+            obj, end = _DECODER.raw_decode(s, pos)
         except json.JSONDecodeError:
-            logger.warning("Invalid JSON from model (attempt %d/%d)", attempt, MAX_ATTEMPTS)
+            nxt = s.find("\n{", pos + 1)
+            if nxt == -1:
+                break
+            pos = nxt + 1
+            continue
+        pos = end
+        if isinstance(obj, dict):
+            records.append(obj)
+        elif isinstance(obj, list):
+            records.extend(o for o in obj if isinstance(o, dict))
+    return records
 
-    return {"raw_output": raw, "error": "invalid_json"}
+
+_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def _to_int(value) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        v = value.translate(_DIGITS).strip()
+        if re.fullmatch(r"\d+", v):
+            return int(v)
+    return None
+
+
+def _to_str(value) -> Optional[str]:
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s or None
+
+
+_TITLE_LABEL = re.compile(r"^\s*عنوان\s*طرح\s*:\s*")
+
+
+def _build_record(raw: dict, lines: list[str]) -> Optional[tuple[dict, int, int]]:
+    """Cut the text of one record out of the input lines.
+    Returns (record, start_line, end_line) or None if the range is invalid."""
+    kind = (_to_str(raw.get("kind")) or "").lower()
+    start = _to_int(raw.get("start_line"))
+    end = _to_int(raw.get("end_line"))
+    if kind not in VALID_KINDS or start is None or end is None:
+        return None
+    if not (1 <= start <= end <= len(lines)):
+        return None
+
+    chunk = lines[start - 1:end]
+    if kind == "title":
+        text = _TITLE_LABEL.sub("", " ".join(chunk)).strip()
+    else:
+        text = "\n".join(chunk)
+    if not text:
+        return None
+
+    chapter = None
+    chapter_line = _to_int(raw.get("chapter_line"))
+    if kind == "article" and chapter_line is not None and 1 <= chapter_line <= len(lines):
+        chapter = lines[chapter_line - 1]
+
+    record = {
+        "kind": kind,
+        "number": _to_int(raw.get("number")),
+        "number_raw": _to_str(raw.get("number_raw")),
+        "chapter": chapter,
+        "amends_law": _to_str(raw.get("amends_law")),
+        "amends_article": _to_str(raw.get("amends_article")),
+        "text": text,
+    }
+    return record, start, end
 
 
 # ---------------------------------------------------------------------------
-# 4) Merge chunk outputs
+# Checks (warnings only, stored in meta)
 # ---------------------------------------------------------------------------
 
-def merge_results(chunk_outputs: list[dict], kinds: list[str]) -> dict:
-    """
-    Group chunk outputs by section kind so numbering from different parts
-    of the document (operative text, expert reviews, introduction,
-    attachment) never mixes. Inside each kind, outputs stay in chunk order.
-    """
-    merged: dict = {}
-    for output, kind in zip(chunk_outputs, kinds):
-        merged.setdefault(kind, []).append(output)
-    return merged
+def _check(records: list[dict], spans: list[tuple[int, int]]) -> dict:
+    """Cheap sanity checks. They never fail the run; they are reported in meta."""
+    overlapping = [
+        records[i]["id"]
+        for i in range(1, len(records))
+        if spans[i][0] <= spans[i - 1][1]
+    ]
+
+    numbers = [r["number"] for r in records
+               if r["kind"] == "article" and r["number"] is not None]
+    missing = sorted(set(range(1, max(numbers) + 1)) - set(numbers)) if numbers else []
+    duplicates = sorted({n for n in numbers if numbers.count(n) > 1})
+
+    return {
+        "overlapping_ids": overlapping,
+        "missing_article_numbers": missing,
+        "duplicate_article_numbers": duplicates,
+    }
 
 
 # ---------------------------------------------------------------------------
-# 5) Public entry point
+# Public entry point
 # ---------------------------------------------------------------------------
 
 @dataclass
 class StructureResult:
-    data: dict            # the full JSON document to store: {"meta": ..., "data": ...}
+    jsonl: str            # the output file content: one JSON object per line
+    records: list[dict]   # the same records as dicts
+    meta: dict            # run info and checks (not part of the JSONL file)
     total_chunks: int
     failed_chunks: int
 
+    @property
+    def data(self) -> str:
+        """JSONL text. Kept so code that stores `result.data` keeps working."""
+        return self.jsonl
 
-def _is_failed(output: dict) -> bool:
-    return isinstance(output, dict) and "error" in output
+    def write_jsonl(self, path) -> None:
+        Path(path).write_text(self.jsonl, encoding="utf-8")
 
 
 def structure_text(text: str) -> StructureResult:
-    """Convert extracted document text into structured JSON.
-
-    Blocking and slow (one model call per chunk, run in parallel), so call
-    it from a background job, never from inside a request handler."""
-    chunks = build_chunks(text)
-    if not chunks:
+    """Convert extracted document text into JSONL records (one model call)."""
+    text = (text or "").strip()
+    if not text:
         raise ValueError("no text to structure")
+    if not API_KEY:
+        raise RuntimeError("AVALAI_API_KEY is not configured in settings")
 
-    client = _make_client()
-    kinds = [chunk.kind for chunk in chunks]
-    outputs: list = [None] * len(chunks)
+    lines, numbered = _number_lines(text)
+    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-    logger.info("Structuring: %d chars, %d chunks", len(text), len(chunks))
+    raw_records: list[dict] = []
+    truncated = False
+    error: Optional[str] = None
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        future_to_index = {
-            executor.submit(call_model, client, chunk): i
-            for i, chunk in enumerate(chunks)
-        }
-        for future in as_completed(future_to_index):
-            i = future_to_index[future]
-            try:
-                outputs[i] = future.result()
-            except Exception as exc:
-                logger.warning("Chunk %d/%d failed: %s", i + 1, len(chunks), exc)
-                outputs[i] = {"error": str(exc)}
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        started = time.monotonic()
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": numbered},
+                ],
+                temperature=0,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except Exception as exc:  # network, timeout, rate limit, quota...
+            error = f"api_error: {exc}"
+            logger.warning("Structure call %d/%d failed: %s", attempt, MAX_ATTEMPTS, exc)
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BACKOFF * attempt)
+            continue
 
-    failed = sum(1 for o in outputs if _is_failed(o))
+        usage = getattr(response, "usage", None)
+        logger.info(
+            "Structure call took %.1fs (completion_tokens=%s)",
+            time.monotonic() - started,
+            getattr(usage, "completion_tokens", "?"),
+        )
+
+        choice = response.choices[0]
+        truncated = choice.finish_reason == "length"
+        raw_records = _parse_output(choice.message.content or "")
+        if raw_records:
+            error = None
+            break
+
+        error = "no_usable_output"
+        logger.warning("Structure call %d/%d: no usable JSONL", attempt, MAX_ATTEMPTS)
+
+    built = [b for b in (_build_record(x, lines) for x in raw_records) if b]
+    invalid = len(raw_records) - len(built)
+
+    cleaned = [b[0] for b in built]
+    spans = [(b[1], b[2]) for b in built]
+    doc_title = next((r["text"] for r in cleaned if r["kind"] == "title"), None)
+    records = [
+        {"id": i, "doc_title": doc_title, **r}
+        for i, r in enumerate(cleaned, start=1)
+    ]
+
+    checks = _check(records, spans)
+    if truncated:
+        logger.warning("Model output was cut off (finish_reason=length); result is partial")
+    if invalid:
+        logger.warning("%d record(s) dropped: invalid line range", invalid)
+    if checks["overlapping_ids"]:
+        logger.warning("Records with overlapping line ranges: %s", checks["overlapping_ids"])
+    if checks["missing_article_numbers"]:
+        logger.warning("Missing article numbers: %s", checks["missing_article_numbers"])
+
+    failed = 1 if (not records or truncated) else 0
+    jsonl = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records)
 
     return StructureResult(
-        data={
-            "meta": {
-                "model": _get_model_name(),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "total_chunks": len(chunks),
-                "failed_chunks": failed,
-            },
-            "data": merge_results(outputs, kinds),
+        jsonl=jsonl,
+        records=records,
+        meta={
+            "model": MODEL,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "total_records": len(records),
+            "truncated": truncated,
+            "error": error,
+            "invalid_records": invalid,
+            **checks,
         },
-        total_chunks=len(chunks),
+        total_chunks=1,
         failed_chunks=failed,
     )
