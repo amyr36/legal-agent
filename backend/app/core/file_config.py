@@ -18,4 +18,4 @@ ALLOWED_MIME_TYPES: set[str] = {
     "application/pdf",
 }
 
-MAX_FILE_SIZE = 20 * 1024 * 1024   # 20 MB
+MAX_FILE_SIZE = 300 * 1024  # 300 KB

@@ -148,32 +148,3 @@ def deduplicate_pairs(pairs: List[Dict]) -> List[Dict]:
     if dropped:
         print(f"  [dedup] removed {dropped} duplicate pair(s); {len(unique)} remain")
     return unique
-
-
-# ---------------------------------------------------------------------------
-# Standalone run
-# ---------------------------------------------------------------------------
-
-
-def quick_lanch() -> list[dict]:
-    print("=== services.retrieval (standalone) ===")
-    print("[1/4] loading context ...")
-    records_a = vss.load_context("A")
-    records_b = vss.load_context("B")
-    print(f"      A: {len(records_a)} record(s) | B: {len(records_b)} record(s)")
-
-    print("[2/4] loading embeddings + FAISS ...")
-    embeddings = vss.get_embeddings()
-    vector_stores = vss.build_or_load_all(embeddings, rebuild=False)
-
-    print("[3/4] running hybrid retrieval (A -> B) ...")
-    pairs = retrieve_candidates(vector_stores, records_a, records_b, top_k=TOP_K)
-    pairs = deduplicate_pairs(pairs)
-
-    print(f"[4/4] {len(pairs)} unique candidate pair(s):")
-
-    return pairs
-
-
-if __name__ == "__main__":
-    pairs = quick_lanch()
