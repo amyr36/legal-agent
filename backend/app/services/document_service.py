@@ -409,3 +409,35 @@ def read_structure(
                 )
                 continue
     return records
+
+
+def load_pair_stores(db: Session, doc_a_id: int, doc_b_id: int, current_user: User):
+    from app.services import vector_store  # اسم واقعی فایل
+
+    if doc_a_id == doc_b_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose two different documents")
+
+    stores = {}
+    for doc_id in (doc_a_id, doc_b_id):
+        document = document_crud.get_document(db, doc_id)
+        if document is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"Document {doc_id} not found")
+        if document.structure_status != "done" or not document.structured_path:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"Document {doc_id} is not structured yet")
+
+        faiss_dir = document_crud.document_dir(doc_id) / "faiss"
+        try:
+            stores[doc_id] = vector_store.load_faiss_from_dir(faiss_dir)
+        except Exception:
+            logger.warning("FAISS load failed for document %s; rebuilding", doc_id, exc_info=True)
+            records = read_structure(db, doc_id, current_user)
+            if not records:
+                raise HTTPException(status.HTTP_409_CONFLICT, f"Document {doc_id} has no records")
+            try:
+                vector_store.build_faiss_from_records(records, faiss_dir)
+            except ValueError as exc:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY, f"Document {doc_id}: {exc}"
+                ) from exc
+            stores[doc_id] = vector_store.load_faiss_from_dir(faiss_dir)
+    return stores
