@@ -52,7 +52,6 @@ async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
             detail="Only PDF files are accepted",
         )
 
-    # Read in chunks and stop as soon as the limit is passed
     chunks: list[bytes] = []
     size = 0
     while True:
@@ -75,7 +74,6 @@ async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
             detail="Uploaded file is empty",
         )
 
-    # Real PDFs carry the magic bytes near the start of the file
     if PDF_MAGIC not in content[:1024]:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -87,7 +85,6 @@ async def _read_upload(file: UploadFile) -> tuple[bytes, str]:
 
 # ---------------------------------------------------------------------
 # Create (single commit, full cleanup on failure)
-# structure_status stays "pending" (server_default); background job flips it
 # ---------------------------------------------------------------------
 
 def _store_and_extract(
@@ -100,9 +97,6 @@ def _store_and_extract(
 ) -> Doc:
     """
     Blocking work (DB, disk, PDF parsing). Runs in a worker thread.
-
-    Everything happens before the single commit, so a document never
-    exists in the database without its files and extracted text.
     """
     doc_id: int | None = None
 
@@ -216,19 +210,9 @@ async def create_document(
 
 # ---------------------------------------------------------------------
 # Read / update / delete
-#
-# Documents belong to organizations, and organizations are not linked to
-# users, so there is no per-user or per-organization ownership check.
-# Every route requires a logged-in user (get_current_user in the router);
-# `current_user` is kept in these signatures so a rule can be added later
-# in one place (for example "only the uploader or an admin may delete").
 # ---------------------------------------------------------------------
 
-def get_document(
-    db: Session,
-    document_id: int,
-    current_user: User,
-) -> Doc | None:
+def get_document(db: Session, document_id: int, current_user: User) -> Doc | None:
     return document_crud.get_document(db, document_id)
 
 
@@ -240,10 +224,7 @@ def get_documents(
     limit: int = 100,
 ) -> list[Doc]:
     return document_crud.get_documents(
-        db,
-        organization_id=organization_id,
-        skip=skip,
-        limit=limit,
+        db, organization_id=organization_id, skip=skip, limit=limit
     )
 
 
@@ -255,13 +236,11 @@ def update_document(
 ) -> Doc | None:
 
     document = document_crud.get_document(db, document_id)
-
     if document is None:
         return None
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Moving a document to another organization: it must exist
     new_org_id = update_data.get("organization_id")
     if (
         new_org_id is not None
@@ -279,35 +258,26 @@ def update_document(
     return document_crud.update_document(db, document)
 
 
-def delete_document(
-    db: Session,
-    document_id: int,
-    current_user: User,
-) -> bool:
-
+def delete_document(db: Session, document_id: int, current_user: User) -> bool:
     document = document_crud.get_document(db, document_id)
-
     if document is None:
         return False
-
     document_crud.delete_document(db, document)
-
     return True
 
 
 # ---------------------------------------------------------------------
 # Structure extraction (background job)
-#
-# Runs AFTER the request returns. Opens its own DB session because the
-# request-scoped session from get_db is already closed by then.
-#
-# The result is stored as a JSONL file (one JSON object per line), not JSON.
 # ---------------------------------------------------------------------
 
-
 def run_structure_extraction(document_id: int) -> None:
-    """Structure the extracted text with the LLM and store the result as JSONL."""
-    # Local imports: keep module load light and avoid a hard dependency
+    """
+    Structure the extracted text with the LLM and store the result as JSONL,
+    then build the per-document FAISS index.
+
+    Each stage has its own try/except so a failure in the LAST stage does not
+    overwrite the status of an earlier, successful stage.
+    """
     from app.db.database import SessionLocal
     from app.services.text_to_json import structure_text
 
@@ -317,9 +287,15 @@ def run_structure_extraction(document_id: int) -> None:
     try:
         document = document_crud.get_document(db, document_id)
         if document is None or not document.extracted_path:
+            logger.warning(
+                "structure extraction skipped: document %s missing or has no extracted_path",
+                document_id,
+            )
             return
 
+        # --- Stage 1: structuring -------------------------------------
         document_crud.mark_structure_status(db, document, "processing")
+        db.commit()  # FIX: persist the status change immediately
 
         text = document_crud.resolve_storage_path(
             document.extracted_path
@@ -327,24 +303,29 @@ def run_structure_extraction(document_id: int) -> None:
 
         result = structure_text(text)
 
-        # An empty or cut-off result must not be stored as "done":
-        # downstream steps (RAG, comparison) would silently work on partial data.
         if result.failed_chunks or not result.records:
             raise RuntimeError(f"structuring gave no usable result: {result.meta}")
 
-        # structured_path_for() may still return a ".json" name: force ".jsonl"
-        jsonl_path = document_crud.structured_path_for(document_id).with_suffix(".jsonl")
+        jsonl_path = (
+            document_crud.structured_path_for(document_id).with_suffix(".jsonl")
+        )
         result.write_jsonl(jsonl_path)
 
+        # FIX: mark done BEFORE building the index, so an indexing failure
+        # does not demote the document back to "failed".
         document_crud.mark_structure_status(
-            db, document, "done",
+            db,
+            document,
+            "done",
             structured_path=document_crud.to_relative(jsonl_path),
         )
+        db.commit()
 
         meta = result.meta
         logger.info(
             "Structured document %s: %d records",
-            document_id, len(result.records),
+            document_id,
+            len(result.records),
         )
         if (
             meta.get("unverified_ids")
@@ -360,11 +341,33 @@ def run_structure_extraction(document_id: int) -> None:
                 meta.get("suspect_ids"),
             )
 
+        # --- Stage 2: indexing (best-effort) --------------------------
+        # FIX: separate try so an embedding/FAISS failure is logged but does
+        # not poison the document status. The document is already searchable
+        # via its structured_path; the index can be rebuilt later.
+        try:
+            from app.services import vector_store
+
+            faiss_dir = document_crud.document_dir(document_id) / "faiss"
+            n_vectors = vector_store.build_faiss_from_records(
+                result.records, faiss_dir
+            )
+            logger.info(
+                "Indexed document %s: %d vectors", document_id, n_vectors
+            )
+        except Exception:
+            logger.exception(
+                "FAISS indexing failed for document %s (structured text is still stored)",
+                document_id,
+            )
+
     except Exception:
         logger.exception("Structure extraction failed for document %s", document_id)
         try:
+            db.rollback()  # FIX: clear any poisoned state before writing status
             if document is not None:
                 document_crud.mark_structure_status(db, document, "failed")
+                db.commit()
         except Exception:
             logger.exception("Could not mark document %s as failed", document_id)
     finally:
@@ -381,12 +384,28 @@ def read_structure(
     if document is None or not document.structured_path:
         return None
 
+    # FIX: missing file is a 404, not a 500.
     path = document_crud.resolve_storage_path(document.structured_path)
+    if not path.exists():
+        logger.warning(
+            "structured_path for document %s points to missing file %s",
+            document_id,
+            path,
+        )
+        return None
 
     records: list[dict] = []
     with path.open(encoding="utf-8") as fh:
-        for line in fh:
+        for line_no, line in enumerate(fh, start=1):
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            try:
                 records.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                # FIX: don't let one bad line crash the whole read.
+                logger.error(
+                    "Bad JSON in %s at line %d: %s", path, line_no, exc
+                )
+                continue
     return records
