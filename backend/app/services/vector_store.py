@@ -268,19 +268,4 @@ def build_or_load_all(embeddings=None, rebuild: bool = False) -> Dict[str, objec
         doc_key: load_faiss_for_document(doc_key, embeddings, rebuild=rebuild)
         for doc_key in DOCUMENT_SLOTS
     }
-<<<<<<< HEAD
   
-=======
-
-
-# ---------------------------------------------------------------------------
-# Standalone run
-# ---------------------------------------------------------------------------
-
-def quick_run():
-    print("=== services.vector_store_service (standalone) ===")
-    emb = get_embeddings()
-    stores = build_or_load_all(emb, rebuild=False)
-    for key, vs in stores.items():
-        print(f"  FAISS {key}: {len(vs.index_to_docstore_id)} vectors")
->>>>>>> 4c801c167e3eb9d2b5be1549952bdcf03c6d22cd

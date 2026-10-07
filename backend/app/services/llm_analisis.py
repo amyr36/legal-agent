@@ -157,36 +157,5 @@ def save_results(shaped_results: List[Dict], path: str = RESULTS_PATH) -> str:
     with open(path, "w", encoding="utf-8") as f:
         for item in shaped_results:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
-<<<<<<< HEAD
-    return path
-=======
     return path
 
-
-# ---------------------------------------------------------------------------
-# Standalone run
-# ---------------------------------------------------------------------------
-
-
-def _demo() -> None:
-    """Full mini-pipeline: load context -> retrieve -> call LLM -> print."""
-    print("=== services.llm_analysis (standalone) ===")
-
-    print("[2/4] retrieving candidates ...")
-    pairs = (Path(SOURCES_DIR) / 'file.txt').read_text(encoding='utf-8')
-
-    print("[3/4] calling LLM ...")
-    raw = analyze_all_pairs(pairs)
-
-    print(f"[4/4] {len(raw)} verdict(s):")
-    for r in raw:
-        print(
-            f"  {r.source_id} -> {r.target_id} | {r.relation} | "
-            f"{r.relation_type} | conf={r.confidence:.2f}"
-        )
-        print(f"      {r.explanation[:120]}")
-
-
-if __name__ == "__main__":
-    _demo()
->>>>>>> 4c801c167e3eb9d2b5be1549952bdcf03c6d22cd
