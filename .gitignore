@@ -60,6 +60,7 @@ credentials/
 __pycache__/
 *.py[cod]
 *$py.class
+*.py[cod]
 
 *.so
 
