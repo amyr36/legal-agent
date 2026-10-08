@@ -43,6 +43,12 @@ class Doc(Base):
         default=None,
     )
 
+    structured_path: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+    )
+
     # pending | processing | done | partial | failed  (LLM structuring job)
     structure_status: Mapped[str] = mapped_column(
         String,
