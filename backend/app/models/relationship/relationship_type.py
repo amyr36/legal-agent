@@ -28,8 +28,3 @@ class RelationshipType(Base):
         "DocRelationship",
         back_populates="relationship_type"
     )
-
-    node_relationships = relationship(
-        "NodeRelationship",
-        back_populates="relationship_type"
-    )
