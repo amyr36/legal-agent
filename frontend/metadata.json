@@ -1,0 +1,6 @@
+{
+  "name": "دادبان هوشمند | سامانه تحلیل تطبیقی اسناد حقوقی",
+  "description": "سامانه هوشمند تشخیص تشابه و تناقض در اسناد و قوانین تخصصی با تحلیل مقایسه‌ای پیشرفته",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #f7f3ec;
+    color: #1c1c18;
+    overflow-x: hidden;
+  }
+}
+
+.font-vazir {
+  font-family: 'Vazirmatn', sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.glass-surface {
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0dad0;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c7beaf;
+}
+
+/* Highlights for clauses matching the provided designs */
+.clause-highlight-conflict {
+  background-color: #fbf0ea !important;
+  border: none !important;
+  border-radius: 1.25rem !important;
+}
+
+.clause-highlight-similarity {
+  background-color: #e8ece7 !important;
+  border: none !important;
+  border-radius: 1.25rem !important;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.995); }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 2s infinite ease-in-out;
+}
+
+@keyframes clause-flash {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(62, 90, 68, 0.3); }
+  35% { transform: scale(1.01); box-shadow: 0 0 0 6px rgba(62, 90, 68, 0.15); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(62, 90, 68, 0); }
+}
+
+.clause-active-pulse {
+  animation: clause-flash 0.85s ease-out;
+}

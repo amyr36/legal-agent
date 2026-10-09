@@ -79,10 +79,10 @@ MAX_CONCURRENT_REQUESTS = 2
 # Chat model config
 # ---------------------------------------------------------------------------
 
-CHAT_MODEL_BASE_URL = "https://api.apmix.ai/v1"
-CHAT_MODEL_API_KEY = "apx_live_1eEKs5DnQOq282Rl3JXfO0fXyg9UqlsnW2YA9GFz"
-CHAT_MODEL_NAME = "deepseek-v4-flash-free"
-EFFORT_ON = False
+CHAT_MODEL_BASE_URL = "https://cleanapis.com/v1"
+CHAT_MODEL_API_KEY = "cc_kBzCGq02Rt2UlUVh5w9w0HFbZNgXvoWzHJ9cYnzxLvyDEozZ"
+CHAT_MODEL_NAME = "claude-sonnet-5"
+EFFORT_ON = True
 EFFORT_LEVEL = "high"
 
 # ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     STORAGE_DIR: str = "/app/storage"
 
     LLM_PROVIDER: str = "avalai"
-    AVALAI_API_KEY: str | None = None
+    AVALAI_API_KEY: str | None = "aa-0PKaZ2PLEsrTUBgCNxcaObL0zMxAF38o7VtVIoFuC2MejN0R"
     AVALAI_BASE_URL: str = "https://api.avalai.ir/v1"
     AVALAI_MODEL: str | None = None
     STRUCTURE_MODEL: str | None = None
