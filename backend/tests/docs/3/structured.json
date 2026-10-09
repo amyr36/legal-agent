@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "model": "deepseek-v4.1-flash",
+    "generated_at": "2026-10-01T11:36:40.947970+00:00",
+    "total_chunks": 12,
+    "failed_chunks": 8
+  },
+  "data": {
+    "generic": [
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"RegistrationNumber\",\"number_raw\":\"385\",\"number\":385,\"parent_number\":null,\"text\":\"شماره ثبت 385\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > شماره ثبت 385\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Session\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"دوازدهم سال دوم-دوره\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > دوازدهم سال دوم-دوره\"}\n{\"id\":3,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Status\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"عادی\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > عادی\"}\n{\"id\":4,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Title\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\"}\n{\"id\":5,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Section\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"کمیسیون های ارجاعی\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > کمیسیون های ارجاعی\"}\n{\"id\":6,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Commission\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"امنیت ملی و سیاست خارجی:اصلی\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > کمیسیون های ارجاعی > امنیت ملی و سیاست خارجی:اصلی\"}\n{\"id\":7,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Commission\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"و حقوقی-عمران:فرعی امورداخلی کشور و شوراها-اقتصادی-قضائی\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > کمیسیون های ارجاعی > و حقوقی-عمران:فرعی امورداخلی کشور و شوراها-اقتصادی-قضائی\"}\n{\"id\":8,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Department\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"معاونت قوانین\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > معاونت قوانین\"}\n{\"id\":9,\"law_seq\":0,\"category\":null,\"law\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز\",\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"Preamble\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"باسمهتعالی\\nریاست محترم مجلس شورای اسلامی\\nاحتراما طرح ذیل که به امضای 57 نفر از نمایندگان رسیده است، جهت طی مراحل قانونی تقدیم میشود .\\n)\",\"breadcrumb\":\"طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز > مقدمه\"}",
+        "error": "invalid_json"
+      }
+    ],
+    "intro_reasons": [
+      {
+        "id": 1,
+        "law_seq": 0,
+        "category": null,
+        "law": null,
+        "book": "دلایل توجیهی:",
+        "chapter": null,
+        "subchapter": null,
+        "type": "Title",
+        "number_raw": null,
+        "number": null,
+        "parent_number": null,
+        "text": "دلایل توجیهی:",
+        "breadcrumb": "دلایل توجیهی:"
+      },
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":null,\"subchapter\":null,\"type\":\"مقدمه\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"مقدمه\",\"breadcrumb\":\"مقدمه\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":\"مقدمه\",\"subchapter\":null,\"type\":\"متن\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"با تصویب این طرح و تبدیل آن به قانون، و اجرای صحیح آن چه دستاوردهایی خواهیم داشت\",\"breadcrumb\":\"مقدمه > متن\"}\n{\"id\":3,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":\"مقدمه\",\"subchapter\":null,\"type\":\"بند\",\"number_raw\":\"1\",\"number\":1,\"parent_number\":null,\"text\":\"افزایش امنیت و کاهش هرگونه ناامنی از آبهای خلیج فارس و دریای عمان با وجود نیروهای فرامنطقه-\\nای، دزدان دریایی و ...\",\"breadcrumb\":\"مقدمه > بند 1\"}\n{\"id\":4,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":\"مقدمه\",\"subchapter\":null,\"type\":\"بند\",\"number_raw\":\"2\",\"number\":2,\"parent_number\":null,\"text\":\"افزایش شاخص های زیست محیطی ناشی از عدم مسئولیت پذیری کشتی های عبوری کشورهای-\\nمختلف و همسایگان خلیج فارس و دریای عمان\",\"breadcrumb\":\"مقدمه > بند 2\"}\n{\"id\":5,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":\"مقدمه\",\"subchapter\":null,\"type\":\"بند\",\"number_raw\":\"3\",\"number\":3,\"parent_number\":null,\"text\":\"اخذ هزینه های تامین امنیت برای کشتی های عبوری-\",\"breadcrumb\":\"مقدمه > بند 3\"}\n{\"id\":6,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":null,\"chapter\":\"مقدمه\",\"subchapter\":null,\"type\":\"بند\",\"number_raw\":\"4\",\"number\":4,\"parent_number\":null,\"text\":\"کاهش تنش های منطقه ای ناشی از حضور نیروهای فرامنطقه ای و متخاصم-\",\"breadcrumb\":\"مقدمه > بند 4\"}",
+        "error": "invalid_json"
+      },
+      {
+        "id": 1,
+        "law_seq": 0,
+        "category": null,
+        "law": null,
+        "book": null,
+        "chapter": "دلایل توجیهی مقدمه",
+        "subchapter": null,
+        "type": "بند",
+        "number_raw": "5",
+        "number": 5,
+        "parent_number": null,
+        "text": "باز تعریف کشورهای جمهوری اسلامی ایران برحسب مولفه های دوست، دشمن، شریک، رقیب-،\nحریف\nعلی شیرین زاد فاطمه محمدبیگی- علی امامی راد- محمدتقی نقدعلی- رمضانعلی سنگدوینی- -\nهوشنگ هادیان پور حبیب قاسمی- مهرداد لاهوتی- علی اکبر علیزاده- امیرحسین بانکی پورفرد- -\nصدیف بدری عبدالرضا مصری- حسینعلی حاجی دلیگانی- احمد آریائی نژاد- - سیدمحمد موحد\nفرامرز شاهسواری- علیرضا زندیان- کامران غضنفری- سیدمحمد مولوی- جواد سعدون زاده- -\nیعقوب رضازاده حسن حسن نتاج صلحدار- مجتبی رحمان دوست- احسان عظیمی راد- ابراهیم-\nنجفی اسپیلی شهین جهانگیری- احد بیوته- کمال حسین پور- سیدمحسن موسوی زاده- - حسین\nحق وردی موسی غضنفرآبادی- فریدون همتی- مجید دوست علی- محمد خوش سیما- - سلمان\nاسحاقی علی اصغر نخعی راد- محمد رستمی- پیمان فلسفی- سیدمحمد سادات ابراهیمی- - فرهاد\n\nبشیری قاسم روان بخش- سیدسلمان ذاکر- امید نصیبی- بهشید برخوردار- عبدالحسین روح-\nالامینی نجف آبادی محمد میرزائی- محمدرضا احمدی سنگر- سیداسماعیل حسینی- - حسنعلی\nاخلاقی امیری عمران عباسی کالی- فرشاد ابراهیم پور نورآبادی- سیدجلیل میرمحمدی میبدی- -\nسیدجواد حسینی کیا نصراله پژمان فر- سیدمحمد پاک مهر- روح اله عباس پور- - جعفر قادری",
+        "breadcrumb": "دلایل توجیهی مقدمه > بند 5"
+      },
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"مقدمه توجیهی کافی و به دور از اجمال\",\"chapter\":null,\"subchapter\":null,\"type\":\"Title\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"مقدمه توجیهی کافی و به دور از اجمال:\\nنیست\\nاست\",\"breadcrumb\":\"مقدمه توجیهی کافی و به دور از اجمال\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"مقدمه توجیهی کافی و به دور از اجمال\",\"chapter\":null,\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"4\",\"number\":4,\"parent_number\":null,\"text\":\"4 توضیحات راجع به ضرورت رسیدگی به قید فوریت در\",\"breadcrumb\":\"مقدمه توجیهی کافی و به دور از اجمال > بند 4\"}",
+        "error": "invalid_json"
+      },
+      {
+        "error": "Request timed out."
+      }
+    ],
+    "operative_text": [
+      {
+        "error": "Request timed out."
+      },
+      {
+        "id": 1,
+        "law_seq": 0,
+        "category": null,
+        "law": "طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز",
+        "book": "نظر معاونت قوانین در مورد طرح طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز تقدیم می شود.",
+        "chapter": null,
+        "subchapter": null,
+        "type": "Title",
+        "number_raw": null,
+        "number": null,
+        "parent_number": null,
+        "text": "25 / 3 / 1389 نظر معاونت قوانین در مورد طرح طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز تقدیم می شود.\nمعاون قوانین",
+        "breadcrumb": "نظر معاونت قوانین در مورد طرح طرح اخذ عوارض و مالیات از کشتی های عبوری از تنگه هرمز تقدیم می شود."
+      }
+    ],
+    "review_tadvin": [
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Title\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"نظر ادارهکل تدوین قوانین\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Addressee\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"معاون محترم قوانین\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > معاون محترم قوانین\"}\n{\"id\":3,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Paragraph\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"احتراما در اجرای بندهای) 2 (و) 4 (ماده) 4 (تدوین و تنقیح قوانین و مقررات کشور مصوب 25 / 3 / 1389 نظر این ادارهکل\\nبهشرح زیر تقدیم میشود:\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > مقدمه\"}\n{\"id\":4,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"1\",\"number\":1,\"parent_number\":null,\"text\":\"1 سابقه تقدیم-\\nبر اساس ماده 130 آئین نامه داخلی مجلس شورای اسلامی\\nطرح/لایحه جاری قبلا تقدیم نگردیده است\\nگردیده است\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > 1 سابقه تقدیم\"}\n{\"id\":5,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"2\",\"number\":2,\"parent_number\":null,\"text\":\"2 در اجرای بند-) 2 (ماده) 4 قانون تدوین و تنقیح قوانین و مقررات کشور:(\\nطرح/لایحه تقدیمی، از حیث ضوابط تدوین ایراد اساسی ندارد\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > 2 در اجرای بند-) 2 (ماده) 4 قانون تدوین و تنقیح قوانین و مقررات کشور:(\"}\n{\"id\":6,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Subclause\",\"number_raw\":\"1\",\"number\":1,\"parent_number\":2,\"text\":\"1 دارای موضوع و عنوان مشخص:\\nنیست\\nاست\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > 2 > 1 دارای موضوع و عنوان مشخص\"}\n{\"id\":7,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Subclause\",\"number_raw\":\"2\",\"number\":2,\"parent_number\":2,\"text\":\"2 عنوان با مفاد طرح/لایحه، منطبق:\\nنیست\\nاست\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > 2 > 2 عنوان با مفاد طرح/لایحه، منطبق\"}\n{\"id\":8,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل تدوین قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Subclause\",\"number_raw\":\"3\",\"number\":3,\"parent_number\":2,\"text\":\"3 دلایل مندرج در\",\"breadcrumb\":\"نظر ادارهکل تدوین قوانین > 2 > 3 دلایل مندرج در\"}",
+        "error": "invalid_json"
+      }
+    ],
+    "review_asnad": [
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Title\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Paragraph\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"معاون محترم قوانین\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}\n{\"id\":3,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Paragraph\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"احتراما در اجرای بندهای) 1 (و) 3 (ماده) 4 (قانون تدوین و تنقیح قوانین و مقررات کشور مصوب 25 / 3 / 1389 نظر این ادارهکل به شرح زیر تقدیم میشود:\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}\n{\"id\":4,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"1\",\"number\":1,\"parent_number\":null,\"text\":\"در اجرای بند) 1 (: نظر اداره کل مربوطه طرح/لایحه جاری دارای سابقه نمی باشد.\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین > بند 1\"}\n{\"id\":5,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"3\",\"number\":3,\"parent_number\":null,\"text\":\"در اجرای بند) 3 (: نظر اداره کل مربوطه در خصوص لزوم قانونگذاری بر اساس طرح/لایحه جاری به ثبت نرسیده است.\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین > بند 3\"}\n{\"id\":6,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Paragraph\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\".......... برگ سوابق قانونی و نظر ادارهکل به ضمیمه تقدیم میشود .تعداد\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}\n{\"id\":7,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Signature\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"مدیرکل اسناد و تنقیح قوانین\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}",
+        "error": "invalid_json"
+      },
+      {
+        "raw_output": "{\"id\":1,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":null,\"subchapter\":null,\"type\":\"Title\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین\"}\n{\"id\":2,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":\"نظر ادارهکل به انضمام سوابق قانونی\",\"subchapter\":null,\"type\":\"Section\",\"number_raw\":null,\"number\":null,\"parent_number\":null,\"text\":\"نظر ادارهکل به انضمام سوابق قانونی\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین > نظر ادارهکل به انضمام سوابق قانونی\"}\n{\"id\":3,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":\"نظر ادارهکل به انضمام سوابق قانونی\",\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"الف\",\"number\":null,\"parent_number\":null,\"text\":\"نظر ادارهکل-الف\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین > نظر ادارهکل به انضمام سوابق قانونی > نظر ادارهکل-الف\"}\n{\"id\":4,\"law_seq\":0,\"category\":null,\"law\":null,\"book\":\"نظر ادارهکل اسناد و تنقیح قوانین\",\"chapter\":\"نظر ادارهکل به انضمام سوابق قانونی\",\"subchapter\":null,\"type\":\"Clause\",\"number_raw\":\"ب\",\"number\":null,\"parent_number\":null,\"text\":\"سوابق قانونی-ب\",\"breadcrumb\":\"نظر ادارهکل اسناد و تنقیح قوانین > نظر ادارهکل به انضمام سوابق قانونی > سوابق قانونی-ب\"}",
+        "error": "invalid_json"
+      }
+    ],
+    "attachment": [
+      {
+        "id": 1,
+        "law_seq": 0,
+        "category": null,
+        "law": null,
+        "book": null,
+        "chapter": null,
+        "subchapter": null,
+        "type": "Appendix",
+        "number_raw": "ضمیمه",
+        "number": null,
+        "parent_number": null,
+        "text": "ضمیمه",
+        "breadcrumb": "ضمیمه"
+      }
+    ]
+  }
+}
