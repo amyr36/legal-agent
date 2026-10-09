@@ -22,8 +22,9 @@ from app.db.database import SessionLocal
 from app.models.identity.user import User
 from app.services import document_service
 from app.services import vector_store as vss
-from app.services.llm_analisis import analyze_all_pairs, get_chat_model, save_results
+from app.services.llm_analisis import analyze_all_pairs, get_chat_model
 from app.services.retrieval import deduplicate_pairs, retrieve_candidates
+from app.crud.document.analysis_crud import save_analysis
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ class AnalysisState(TypedDict, total=False):
     top_k: int
     count_a: int
     count_b: int
+    analysis_id: int
     vector_counts: Dict[str, int]
     candidates_path: str
     candidate_count: int
@@ -180,42 +182,105 @@ def _retrieve_candidates_node(state: AnalysisState) -> Dict:
 
 def _analyze_and_save_node(state: AnalysisState) -> Dict:
     print("[analysis] node: analyze_with_llm")
+
     pairs = _read_jsonl(state["candidates_path"])
 
-    # Results of earlier attempts of this run (survive a failed node / resume)
+    # نتایج موفق قبلی برای امکان resume
     partial_path = state["results_path"] + ".partial"
-    done = _read_jsonl(partial_path) if os.path.exists(partial_path) else []
-    done_keys = {(r["source_id"], r["target_id"]) for r in done}
+    done = (
+        _read_jsonl(partial_path)
+        if os.path.exists(partial_path)
+        else []
+    )
+
+    done_keys = {
+        (r["source_id"], r["target_id"])
+        for r in done
+    }
 
     todo = [
         p for p in pairs
-        if (p["source"].get("id"), p["candidate"].get("id")) not in done_keys
+        if (
+            p["source"].get("id"),
+            p["candidate"].get("id"),
+        ) not in done_keys
     ]
+
     print(f"  {len(done)} already done, {len(todo)} to go")
 
     results = analyze_all_pairs(todo, get_chat_model())
-    print(f"  {len(results)} new result(s)")
+    new = [r.model_dump() for r in results]
 
-    # persist successful results BEFORE the completeness check
-    new = [r.model_dump() for r in results]  # pydantic -> dict for json
-    with open(partial_path, "a", encoding="utf-8") as f:
-        for r in new:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    # ذخیره موقت نتایج جدید برای resume در صورت شکست
+    if new:
+        with open(partial_path, "a", encoding="utf-8") as f:
+            for result in new:
+                f.write(
+                    json.dumps(result, ensure_ascii=False) + "\n"
+                )
 
     shaped = done + new
 
-    expected = {(p["source"].get("id"), p["candidate"].get("id")) for p in pairs}
-    got = {(r["source_id"], r["target_id"]) for r in shaped}
+    expected = {
+        (
+            p["source"].get("id"),
+            p["candidate"].get("id"),
+        )
+        for p in pairs
+    }
+
+    got = {
+        (r["source_id"], r["target_id"])
+        for r in shaped
+    }
+
     missing = expected - got
-    if expected and len(missing) / len(expected) > MAX_MISSING_RATIO:
-        raise RuntimeError(
-            f"LLM analysis incomplete: {len(missing)}/{len(expected)} pair(s) "
-            f"have no verdict; resume the run to retry"
+
+    if missing:
+        print(
+            f"[analysis] missing verdicts: {len(missing)}/{len(expected)}"
         )
 
-    path = save_results(shaped, state["results_path"])
-    print(f"  saved {len(shaped)} result(s) to {path}")
-    return {"results_path": path, "result_count": len(shaped)}
+    for source_id, target_id in sorted(missing):
+        print(
+            f"[analysis] missing pair: "
+            f"source_id={source_id}, target_id={target_id}"
+        )
+
+    
+    if missing:
+        print(
+            f"[analysis] WARNING: saving partial results; "
+            f"{len(missing)}/{len(expected)} pair(s) are missing"
+        )
+
+
+    # ذخیره نتیجه نهایی در PostgreSQL
+    db = SessionLocal()
+
+    try:
+        analysis = save_analysis(
+            db=db,
+            document_a_id=state["doc_a_id"],
+            document_b_id=state["doc_b_id"],
+            user_id=state["user_id"],
+            results=shaped,
+        )
+
+        analysis_id = analysis.analysis_id
+
+    finally:
+        db.close()
+
+    print(
+        f"[analysis] saved analysis_id={analysis_id}, "
+        f"relations={len(shaped)}"
+    )
+
+    return {
+        "analysis_id": analysis_id,
+        "result_count": len(shaped),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +347,22 @@ def run_analysis(
         },
         _config(run_id),
     )
+
+    state = _get_graph().invoke(
+    {
+        "doc_a_id": doc_a_id,
+        "doc_b_id": doc_b_id,
+        "user_id": user_id,
+        "top_k": top_k,
+        "candidates_path": candidates_path,
+        "results_path": results_path,
+    },
+    _config(run_id),
+)
+
+    print("[analysis] final state keys:", list(state.keys()))
+    print("[analysis] final analysis_id:", state.get("analysis_id"))
+
     return {"run_id": run_id, **state}
 
 
@@ -293,23 +374,52 @@ def resume_analysis(run_id: str) -> Dict:
 
 def get_status(run_id: str) -> Dict[str, Any]:
     snap = _get_graph().get_state(_config(run_id))
+
     if not snap.values and not snap.next:
-        return {"run_id": run_id, "status": "not_found"}
+        return {
+            "run_id": run_id,
+            "status": "not_found",
+        }
+
+    values = snap.values
+
+    print("[analysis status] run_id:", run_id)
+    print("[analysis status] state keys:", list(values.keys()))
+    print("[analysis status] analysis_id:", values.get("analysis_id"))
+    print("[analysis status] user_id:", values.get("user_id"))
+
+    user_id = values.get("user_id")
+
     if not snap.next:
         return {
             "run_id": run_id,
             "status": "completed",
-            "results_path": snap.values.get("results_path"),
+            "user_id": user_id,
+            "analysis_id": values.get("analysis_id"),
+            "result_count": values.get("result_count", 0),
         }
-    errors = [t.error for t in snap.tasks if getattr(t, "error", None)]
+
+    errors = [
+        task.error
+        for task in snap.tasks
+        if getattr(task, "error", None)
+    ]
+
     if errors:
         return {
             "run_id": run_id,
             "status": "failed",
+            "user_id": user_id,
             "step": snap.next[0],
             "error": str(errors[0]),
         }
-    return {"run_id": run_id, "status": "running", "step": snap.next[0]}
+
+    return {
+        "run_id": run_id,
+        "status": "running",
+        "user_id": user_id,
+        "step": snap.next[0],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -331,10 +441,17 @@ def analyze_documents(
     user_id: int,
     run_id: Optional[str] = None,
 ) -> Dict:
-    state = run_analysis(doc_a_id, doc_b_id, user_id, run_id=run_id)
+    state = run_analysis(
+        doc_a_id,
+        doc_b_id,
+        user_id,
+        run_id=run_id,
+    )
+
     return {
         "run_id": state["run_id"],
-        "relations": load_results(state["results_path"]),
+        "analysis_id": state["analysis_id"],
+        "count": state["result_count"],
     }
 
 
