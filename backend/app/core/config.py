@@ -13,14 +13,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # ---------------------------------------------------------------------------
 
 
-# core/config.py → core/ → app/ → backend
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# core/config.py  →  core/  →  app/  →  backend/   (inside Docker: /app)
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Analysis pipeline storage. Overridable so Docker can map the tracked
-# `backend/storage` dataset to a container path (ANALYSIS_STORAGE_DIR).
-ANALYSIS_STORAGE_DIR = os.environ.get("ANALYSIS_STORAGE_DIR", "").strip()
-SOURCES_DIR = ANALYSIS_STORAGE_DIR or os.path.join(BASE_DIR, "storage")
-RESULTS_PATH = os.path.join(BASE_DIR, "analysis_results.jsonl")
+SOURCES_DIR = os.environ.get("STORAGE_DIR", os.path.join(BACKEND_DIR, "storage"))
+
+ANALYSIS_DIR = Path(os.environ.get("ANALYSIS_STORAGE_DIR", BACKEND_DIR / "analysis_storage"))
+ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+
+RESULTS_PATH = str(ANALYSIS_DIR / "analysis_results.jsonl")
 
 DOCUMENT_SLOTS = {
     "A": {
@@ -33,8 +34,8 @@ DOCUMENT_SLOTS = {
     },
 }
 
-CHECKPOINT_DB = os.environ.get("LEGAL_SIM_CHECKPOINT_DB", "checkpoints.sqlite")
-CANDIDATES_PATH = os.path.join(os.path.dirname(RESULTS_PATH) or ".", "candidates.jsonl")
+CHECKPOINT_DB = os.environ.get("LEGAL_SIM_CHECKPOINT_DB", str(ANALYSIS_DIR / "checkpoints.sqlite"))
+CANDIDATES_PATH = str(ANALYSIS_DIR / "candidates.jsonl")
 MAX_MISSING_RATIO = 0.0
 
 # ---------------------------------------------------------------------------
@@ -77,15 +78,12 @@ MAX_CONCURRENT_REQUESTS = 2
 # ---------------------------------------------------------------------------
 # Chat model config
 # ---------------------------------------------------------------------------
-# The analysis pipeline uses the AVALAI provider configured via settings
-# (AVALAI_API_KEY / AVALAI_BASE_URL / AVALAI_MODEL in .env). These constants
-# only control the optional reasoning-effort toggles for that provider.
 
-EFFORT_ON = (
-    os.environ.get("LLM_REASONING_EFFORT", "").strip().lower()
-    in {"1", "true", "yes", "on"}
-)
-EFFORT_LEVEL = os.environ.get("LLM_REASONING_EFFORT_LEVEL", "high")
+CHAT_MODEL_BASE_URL = "https://api.apmix.ai/v1"
+CHAT_MODEL_API_KEY = "apx_live_1eEKs5DnQOq282Rl3JXfO0fXyg9UqlsnW2YA9GFz"
+CHAT_MODEL_NAME = "deepseek-v4-flash-free"
+EFFORT_ON = False
+EFFORT_LEVEL = "high"
 
 # ---------------------------------------------------------------------------
 # Legal relation taxonomy
@@ -119,7 +117,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     DATABASE_URL: str = DEFAULT_DATABASE_URL
-    STORAGE_DIR: str = str(Path(__file__).resolve().parents[3] / "storage")
+    STORAGE_DIR: str = "/app/storage"
 
     LLM_PROVIDER: str = "avalai"
     AVALAI_API_KEY: str | None = None
