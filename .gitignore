@@ -322,3 +322,7 @@ datasets/
 *.rej
 >>>>>>> e51ef3c (the compose was writed)
 STATUS.md
+
+
+backend/storage/*
+!backend/storage/.gitkeep
