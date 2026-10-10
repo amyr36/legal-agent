@@ -1,31 +1,21 @@
-import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
-from pathlib import Path
 from functools import lru_cache
 
 from langchain_openai import ChatOpenAI
 
 from app.services import vector_store as vss
-from app.core.config import SOURCES_DIR, settings
+from app.core.config import settings
 from app.core.config import (
     EFFORT_LEVEL,
     EFFORT_ON,
     LLM_BATCH_SIZE,
     LLM_MAX_RETRIES,
     MAX_CONCURRENT_REQUESTS,
-    RELATION_TYPE_VALUES,
-    RESULTS_PATH,
-    TOP_K,
 )
 from app.core.prompts import ANALYSIS_SYSTEM_PROMPT , build_batch_user_prompt
 from app.schemas.analysis import BatchAnalysisResult, AnalysisResult
-from app.services.retrieval import (
-    deduplicate_pairs,
-    records_by_id,
-    retrieve_candidates,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -150,12 +140,4 @@ def analyze_all_pairs(pairs: List[Dict], chat_model=None, batch_size: int = LLM_
         for f in as_completed(futures):
             results.extend(f.result())
     return results
-
-
-
-def save_results(shaped_results: List[Dict], path: str = RESULTS_PATH) -> str:
-    with open(path, "w", encoding="utf-8") as f:
-        for item in shaped_results:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-    return path
 

@@ -38,6 +38,7 @@ class AnalysisState(TypedDict, total=False):
     rebuild: bool
     records_a: List[Dict]
     records_b: List[Dict]
+    analysis_id: int
     embeddings: Any
     chat_model: Any
     top_k: int

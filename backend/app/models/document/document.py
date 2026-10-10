@@ -79,13 +79,6 @@ class Doc(Base):
         back_populates="documents"
     )
 
-
-    analyses = relationship(
-        "Analysis",
-        back_populates="document",
-        cascade="all, delete-orphan",
-    )
-
     domains = relationship(
         "Domain",
         back_populates="document",
@@ -104,5 +97,19 @@ class Doc(Base):
         "DocRelationship",
         foreign_keys="DocRelationship.target_doc_id",
         back_populates="target_document",
+        cascade="all, delete-orphan",
+    )
+
+    analyses_as_a = relationship(
+        "Analysis",
+        foreign_keys="Analysis.document_a_id",
+        back_populates="document_a",
+        cascade="all, delete-orphan",
+    )
+
+    analyses_as_b = relationship(
+        "Analysis",
+        foreign_keys="Analysis.document_b_id",
+        back_populates="document_b",
         cascade="all, delete-orphan",
     )
