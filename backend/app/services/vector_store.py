@@ -157,7 +157,7 @@ def build_faiss_from_records(
     indexed: List[Tuple[int, Dict]] = [
         (i, r)
         for i, r in enumerate(records)
-        if r.get("kind") == "article" and str(r.get("text", "")).strip()
+        if str(r.get("text", "")).strip()
     ]
     if not indexed:
         raise ValueError("no article records to index")

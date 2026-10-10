@@ -303,8 +303,14 @@ def run_structure_extraction(document_id: int) -> None:
 
         result = structure_text(text)
 
-        if result.failed_chunks or not result.records:
+        if not result.records:
             raise RuntimeError(f"structuring gave no usable result: {result.meta}")
+
+        if result.failed_chunks:
+            logger.warning(
+                "Document %s: %d chunk(s) failed, rule-based fallback used: %s",
+                document_id, result.failed_chunks, result.data.get("failed"),
+            )
 
         jsonl_path = (
             document_crud.structured_path_for(document_id).with_suffix(".jsonl")
