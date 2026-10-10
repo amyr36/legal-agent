@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, HistoryItem, AppScreen } from '../types';
 
@@ -12,6 +12,8 @@ interface SidebarProps {
   onNavigate: (screen: AppScreen) => void;
   onSelectHistoryItem?: (item: HistoryItem) => void;
   onLogout: () => void;
+  isLoadingHistory?: boolean;
+  onRefreshHistory?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +25,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   onSelectHistoryItem,
   onLogout,
+  isLoadingHistory = false,
+  onRefreshHistory,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
+
+  const filteredHistory = history.filter((item) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const dispNum = String(item.displayNumber ?? Math.ceil((item.analysisId || 1) / 2));
+    return (
+      item.title.toLowerCase().includes(q) ||
+      (item.doc1Name && item.doc1Name.toLowerCase().includes(q)) ||
+      (item.doc2Name && item.doc2Name.toLowerCase().includes(q)) ||
+      dispNum.includes(q)
+    );
+  });
+
+  const handleItemClick = async (item: HistoryItem) => {
+    if (item.analysisId) {
+      setLoadingItemId(item.analysisId);
+    }
+    try {
+      if (onSelectHistoryItem) {
+        await onSelectHistoryItem(item);
+      }
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
   return (
     <>
       {/* Floating Open Sidebar Trigger (At top-left corner) */}
@@ -100,9 +131,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
                 <input
                   type="text"
-                  placeholder="جستجو..."
-                  className="w-full text-xs pr-9 pl-3 py-2 rounded-2xl bg-[#F4F7F4]/80 border border-[#E8E4DB]/50 focus:ring-2 focus:ring-[#5C7A60]/40 focus:border-[#5C7A60] placeholder:text-[#71756E]/80 text-[#1F2721] outline-none transition"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="جستجو در تحلیل‌ها..."
+                  className="w-full text-xs pr-9 pl-8 py-2 rounded-2xl bg-[#F4F7F4]/80 border border-[#E8E4DB]/50 focus:ring-2 focus:ring-[#5C7A60]/40 focus:border-[#5C7A60] placeholder:text-[#71756E]/80 text-[#1F2721] outline-none transition"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute left-2.5 top-2.5 text-[#71756E] hover:text-[#1F2721] p-0.5 rounded cursor-pointer"
+                    title="پاک کردن جستجو"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">close</span>
+                  </button>
+                )}
               </div>
 
               {/* Action Button: New Analysis */}
@@ -119,64 +161,98 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               </div>
 
-              {/* History Section */}
+              {/* History Section Header */}
               <div className="flex items-center justify-between px-2 mb-2">
-                <span className="text-[11px] font-bold text-[#71756E] tracking-wider">
-                  تاریخچه تحلیل‌ها
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-[#71756E] tracking-wider">
+                    تاریخچه تحلیل‌ها
+                  </span>
+                  {onRefreshHistory && (
+                    <button
+                      onClick={onRefreshHistory}
+                      disabled={isLoadingHistory}
+                      className="text-[#71756E] hover:text-[#3D5241] p-0.5 rounded transition cursor-pointer"
+                      title="بروزرسانی تاریخچه از سرور"
+                    >
+                      <span
+                        className={`material-symbols-outlined text-[14px] ${
+                          isLoadingHistory ? 'animate-spin text-[#4A634E]' : ''
+                        }`}
+                      >
+                        refresh
+                      </span>
+                    </button>
+                  )}
+                </div>
                 <span className="text-[10px] font-mono text-[#324235] bg-[#E8EFE9] px-2 py-0.5 rounded-full font-semibold">
-                  {history.length}
+                  {filteredHistory.length}
                 </span>
               </div>
 
               <nav className="space-y-1 text-xs font-medium flex-1 overflow-y-auto pr-0.5 pl-0.5">
-                {history.length > 0 ? (
+                {isLoadingHistory && filteredHistory.length === 0 ? (
+                  <div className="py-8 text-center text-[#71756E] text-[11px]">
+                    <span className="w-5 h-5 border-2 border-[#4A634E] border-t-transparent rounded-full animate-spin inline-block mb-2"></span>
+                    <span className="block">در حال بارگذاری تاریخچه از سرور...</span>
+                  </div>
+                ) : filteredHistory.length > 0 ? (
                   <div className="space-y-1.5">
-                    {history.map((item, index) => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          if (onSelectHistoryItem) onSelectHistoryItem(item);
-                          onNavigate('compare');
-                          onClose();
-                        }}
-                        className={`w-full text-right group block p-2.5 rounded-2xl transition-all cursor-pointer ${
-                          index === 0
-                            ? 'bg-white shadow-sm border border-[#D2DFD4]/90 hover:border-[#5C7A60]'
-                            : 'hover:bg-white/70 border border-transparent hover:border-[#E8E4DB]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1 min-w-0">
-                          <span
-                            className={`material-symbols-outlined text-[16px] shrink-0 transition-colors ${
-                              index === 0 ? 'text-[#4A634E]' : 'text-[#71756E] group-hover:text-[#4A634E]'
-                            }`}
-                          >
-                            article
-                          </span>
-                          <span
-                            className={`text-xs truncate transition-colors ${
-                              index === 0
-                                ? 'font-bold text-[#141A15]'
-                                : 'font-semibold text-[#324235] group-hover:text-[#141A15]'
-                            }`}
-                          >
-                            {item.title}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-[#71756E] pr-6 flex items-center justify-between">
-                          <span>{item.timeAgo}</span>
-                          <span className="text-[9px] text-[#5C7A60] bg-[#F4F7F4] px-1.5 py-0.5 rounded">
-                            {item.relationsCount} رابطه
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                    {filteredHistory.map((item, index) => {
+                      const isLoadingThis = loadingItemId === item.analysisId;
+                      return (
+                        <button
+                          key={item.id}
+                          disabled={isLoadingThis}
+                          onClick={() => handleItemClick(item)}
+                          className={`w-full text-right group block p-2.5 rounded-2xl transition-all cursor-pointer ${
+                            isLoadingThis
+                              ? 'bg-amber-50/70 border border-amber-300 pointer-events-none'
+                              : index === 0
+                              ? 'bg-white shadow-sm border border-[#D2DFD4]/90 hover:border-[#5C7A60]'
+                              : 'hover:bg-white/70 border border-transparent hover:border-[#E8E4DB]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1 min-w-0">
+                            {isLoadingThis ? (
+                              <span className="w-4 h-4 border-2 border-[#4A634E] border-t-transparent rounded-full animate-spin shrink-0"></span>
+                            ) : (
+                              <span
+                                className={`material-symbols-outlined text-[16px] shrink-0 transition-colors ${
+                                  index === 0 ? 'text-[#4A634E]' : 'text-[#71756E] group-hover:text-[#4A634E]'
+                                }`}
+                              >
+                                article
+                              </span>
+                            )}
+                            <span
+                              className={`text-xs leading-snug line-clamp-2 transition-colors ${
+                                index === 0
+                                  ? 'font-bold text-[#141A15]'
+                                  : 'font-semibold text-[#324235] group-hover:text-[#141A15]'
+                              }`}
+                              title={item.title}
+                            >
+                              {item.title}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-[#71756E] pr-6 flex items-center justify-between">
+                            <span>{item.formattedDate || item.timeAgo}</span>
+                            <span className="text-[10px] text-[#3D5241] bg-[#E8EFE9] px-2 py-0.5 rounded-md font-mono font-bold">
+                              تحلیل #{item.displayNumber ?? Math.ceil((item.analysisId || 1) / 2)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-8 text-center text-[#71756E] text-[11px]">
-                    <span className="material-symbols-outlined text-[24px] text-[#ADC4B0] block mb-1">history</span>
-                    <span>هنوز سابقه‌ای ثبت نشده است</span>
+                    <span className="material-symbols-outlined text-[24px] text-[#ADC4B0] block mb-1">
+                      {searchQuery ? 'search_off' : 'history'}
+                    </span>
+                    <span>
+                      {searchQuery ? 'موردی با این عبارت یافت نشد' : 'هنوز سابقه‌ای ثبت نشده است'}
+                    </span>
                   </div>
                 )}
               </nav>

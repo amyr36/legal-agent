@@ -69,22 +69,29 @@ export interface WorkflowStatusResponse {
   relations?: BackendRelation[];
 }
 
-// History List Item
+// History List Item (from GET /analyze/history)
 export interface HistoryListItem {
   analysis_id: number;
+  document_a_id?: number;
+  document_b_id?: number;
   created_at: string;
-  doc_a: { doc_id: number; title: string };
-  doc_b: { doc_id: number; title: string };
+  // If backend returns populated doc objects as well
+  doc_a?: { doc_id: number; title: string };
+  doc_b?: { doc_id: number; title: string };
 }
 
-// History Detail
+// History Detail (from GET /analyze/history/{analysis_id})
 export interface HistoryDetailResponse {
   analysis_id: number;
   created_at: string;
-  doc_a: { doc_id: number; title: string; structure: StructuredRecord[] };
-  doc_b: { doc_id: number; title: string; structure: StructuredRecord[] };
-  count: number;
-  relations: BackendRelation[];
+  document_a_id?: number;
+  document_b_id?: number;
+  doc_a?: { doc_id: number; title?: string; structure?: StructuredRecord[] };
+  doc_b?: { doc_id: number; title?: string; structure?: StructuredRecord[] };
+  count?: number;
+  relations?: BackendRelation[];
+  // If backend returns root structure or flat relations
+  [key: string]: any;
 }
 
 // Frontend UI State Models
@@ -143,8 +150,12 @@ export interface AnalysisStep {
 export interface HistoryItem {
   id: string;
   analysisId?: number;
+  displayNumber?: number;
+  docAId?: number;
+  docBId?: number;
   title: string;
   timeAgo: string;
+  formattedDate?: string;
   doc1Name: string;
   doc2Name: string;
   relationsCount: number;

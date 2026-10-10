@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DocumentInfo } from '../types';
 import { DocumentApi, AnalyzeApi } from '../services/api';
 
+const PENDING_DOC1_KEY = 'legal_agent_pending_doc_1';
+const PENDING_DOC2_KEY = 'legal_agent_pending_doc_2';
+
 interface UploadScreenProps {
   userName: string;
   doc1?: DocumentInfo | null;
@@ -17,13 +20,46 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
   doc2: initialDoc2 = null,
   onStartAnalysis,
 }) => {
-  const [doc1, setDoc1] = useState<DocumentInfo | null>(initialDoc1);
-  const [doc2, setDoc2] = useState<DocumentInfo | null>(initialDoc2);
+  // Helper to read cached pending document across page refreshes
+  const getInitialDoc = (
+    propDoc: DocumentInfo | null | undefined,
+    storageKey: string
+  ): DocumentInfo | null => {
+    if (propDoc) return propDoc;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem(storageKey);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Error reading stored doc:', e);
+      }
+    }
+    return null;
+  };
+
+  // Helper to determine status based on document structureStatus
+  const getInitialStatus = (
+    doc: DocumentInfo | null
+  ): 'idle' | 'uploading' | 'processing' | 'done' | 'failed' => {
+    if (!doc) return 'idle';
+    if (doc.structureStatus === 'done' || doc.status === 'ready') return 'done';
+    if (doc.structureStatus === 'failed') return 'failed';
+    if (doc.docId) return 'processing';
+    return 'idle';
+  };
+
+  const [doc1, setDoc1] = useState<DocumentInfo | null>(() =>
+    getInitialDoc(initialDoc1, PENDING_DOC1_KEY)
+  );
+  const [doc2, setDoc2] = useState<DocumentInfo | null>(() =>
+    getInitialDoc(initialDoc2, PENDING_DOC2_KEY)
+  );
+
   const [statusDoc1, setStatusDoc1] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>(
-    initialDoc1?.structureStatus === 'done' ? 'done' : initialDoc1 ? 'processing' : 'idle'
+    () => getInitialStatus(doc1)
   );
   const [statusDoc2, setStatusDoc2] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>(
-    initialDoc2?.structureStatus === 'done' ? 'done' : initialDoc2 ? 'processing' : 'idle'
+    () => getInitialStatus(doc2)
   );
 
   const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
@@ -41,101 +77,230 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
     };
   }, []);
 
-  // Poll Doc 1 structure if it has docId but not done yet
+  // Update doc1 / doc2 if props change from outside
   useEffect(() => {
-    if (doc1?.docId && statusDoc1 === 'processing') {
-      let isSubscribed = true;
-      const pollDoc1 = async () => {
-        let attempts = 0;
-        let settled = false;
-        while (isSubscribed && attempts < 60 && !settled) {
-          attempts++;
-          await new Promise((r) => setTimeout(r, 1500));
-          if (!isSubscribed) break;
-          try {
-            const check = await DocumentApi.getDocument(doc1.docId!);
-            if (check.structure_status === 'done') {
-              if (isSubscribed) {
-                setStatusDoc1('done');
-                setDoc1((prev) => (prev ? { ...prev, structureStatus: 'done', status: 'ready' } : prev));
-                setUploadError(null);
-              }
-              settled = true;
-            } else if (check.structure_status === 'failed') {
-              if (isSubscribed) {
-                setStatusDoc1('failed');
-                setUploadError('ساختاردهی سند اول با خطا مواجه شد. جزئیات خطا در لاگ سرور ثبت شده است.');
-              }
-              settled = true;
-            }
-          } catch (err: any) {
-            console.warn('Doc 1 polling error:', err);
-            if (isSubscribed) {
-              setUploadError(err?.message || 'خطا در بررسی وضعیت سند اول از سرور');
-            }
-          }
-        }
-        if (isSubscribed && !settled) {
-          setStatusDoc1('failed');
-          setUploadError(
-            'زمان انتظار برای ساخت پایگاه داده سند اول به پایان رسید. لطفاً فایل را حذف و دوباره بارگذاری کنید.'
-          );
-        }
-      };
-      pollDoc1();
-      return () => {
-        isSubscribed = false;
-      };
+    if (initialDoc1) {
+      setDoc1(initialDoc1);
+      setStatusDoc1(getInitialStatus(initialDoc1));
     }
-  }, [doc1?.docId, statusDoc1]);
+  }, [initialDoc1]);
 
-  // Poll Doc 2 structure if it has docId but not done yet
   useEffect(() => {
-    if (doc2?.docId && statusDoc2 === 'processing') {
-      let isSubscribed = true;
-      const pollDoc2 = async () => {
-        let attempts = 0;
-        let settled = false;
-        while (isSubscribed && attempts < 60 && !settled) {
-          attempts++;
-          await new Promise((r) => setTimeout(r, 1500));
-          if (!isSubscribed) break;
-          try {
-            const check = await DocumentApi.getDocument(doc2.docId!);
-            if (check.structure_status === 'done') {
-              if (isSubscribed) {
-                setStatusDoc2('done');
-                setDoc2((prev) => (prev ? { ...prev, structureStatus: 'done', status: 'ready' } : prev));
-                setUploadError(null);
-              }
-              settled = true;
-            } else if (check.structure_status === 'failed') {
-              if (isSubscribed) {
-                setStatusDoc2('failed');
-                setUploadError('ساختاردهی سند دوم با خطا مواجه شد. جزئیات خطا در لاگ سرور ثبت شده است.');
-              }
-              settled = true;
-            }
-          } catch (err: any) {
-            console.warn('Doc 2 polling error:', err);
-            if (isSubscribed) {
-              setUploadError(err?.message || 'خطا در بررسی وضعیت سند دوم از سرور');
-            }
-          }
-        }
-        if (isSubscribed && !settled) {
-          setStatusDoc2('failed');
-          setUploadError(
-            'زمان انتظار برای ساخت پایگاه داده سند دوم به پایان رسید. لطفاً فایل را حذف و دوباره بارگذاری کنید.'
-          );
-        }
-      };
-      pollDoc2();
-      return () => {
-        isSubscribed = false;
-      };
+    if (initialDoc2) {
+      setDoc2(initialDoc2);
+      setStatusDoc2(getInitialStatus(initialDoc2));
     }
-  }, [doc2?.docId, statusDoc2]);
+  }, [initialDoc2]);
+
+  // Independent timeout tracking state for doc 1 & doc 2
+  const [isTimeoutDoc1, setIsTimeoutDoc1] = useState(false);
+  const [isTimeoutDoc2, setIsTimeoutDoc2] = useState(false);
+
+  // Retry trigger counters to restart polling when user clicks "بررسی مجدد"
+  const [retryTrigger1, setRetryTrigger1] = useState(0);
+  const [retryTrigger2, setRetryTrigger2] = useState(0);
+
+  // Seconds elapsed during processing for user awareness
+  const [elapsedSecondsDoc1, setElapsedSecondsDoc1] = useState(0);
+  const [elapsedSecondsDoc2, setElapsedSecondsDoc2] = useState(0);
+
+  // Seconds elapsed ticker for Doc 1
+  useEffect(() => {
+    if (statusDoc1 !== 'processing' || isTimeoutDoc1) return;
+    const interval = setInterval(() => {
+      setElapsedSecondsDoc1((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [statusDoc1, isTimeoutDoc1]);
+
+  // Seconds elapsed ticker for Doc 2
+  useEffect(() => {
+    if (statusDoc2 !== 'processing' || isTimeoutDoc2) return;
+    const interval = setInterval(() => {
+      setElapsedSecondsDoc2((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [statusDoc2, isTimeoutDoc2]);
+
+  // =========================================================================
+  // Independent Polling for Document 1
+  // - No short 60-attempt limit
+  // - Stops ONLY on 'done' or explicit backend failure ('failed' / 'error')
+  // - 10-minute safety timeout with "بررسی مجدد" retry button
+  // - Progressive backoff (1.5s -> 5s) to reduce backend pressure
+  // - Automatic restart if user refreshed or navigated back while processing
+  // - Proper interval cleanup on unmount or doc removal
+  // =========================================================================
+  useEffect(() => {
+    if (!doc1?.docId || statusDoc1 !== 'processing') {
+      return;
+    }
+
+    let isSubscribed = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const startTime = Date.now();
+    const MAX_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes safety cap
+    let currentInterval = 1500; // Start at 1.5s and backoff to 5s
+
+    setIsTimeoutDoc1(false);
+    setUploadError(null);
+
+    const poll = async () => {
+      if (!isSubscribed || isCancelledRef.current) return;
+
+      const elapsed = Date.now() - startTime;
+
+      // Check safety cap (10 minutes)
+      if (elapsed >= MAX_TIMEOUT_MS) {
+        if (isSubscribed) {
+          setIsTimeoutDoc1(true);
+        }
+        return;
+      }
+
+      try {
+        const check = await DocumentApi.getDocument(doc1.docId!);
+        if (!isSubscribed || isCancelledRef.current) return;
+
+        // Terminal status 1: done
+        if (check.structure_status === 'done') {
+          setStatusDoc1('done');
+          setIsTimeoutDoc1(false);
+          const updated: DocumentInfo = {
+            ...doc1,
+            title: check.title || doc1.title,
+            structureStatus: 'done',
+            status: 'ready',
+          };
+          setDoc1(updated);
+          try {
+            sessionStorage.setItem(PENDING_DOC1_KEY, JSON.stringify(updated));
+          } catch (_) {}
+          return;
+        }
+
+        // Terminal status 2: explicit backend failure
+        if (
+          check.structure_status === 'failed' ||
+          (check as any).structure_status === 'error'
+        ) {
+          setStatusDoc1('failed');
+          setIsTimeoutDoc1(false);
+          setUploadError('پردازش و ساختاردهی سند اول با خطای سرور مواجه شد.');
+          return;
+        }
+
+        // Non-terminal: 'pending' or 'processing' or 'partial'
+        // Progressive backoff: 1.5s -> 2.2s -> 2.9s -> 3.6s -> 4.3s -> max 5.0s
+        currentInterval = Math.min(5000, currentInterval + 700);
+      } catch (err: any) {
+        // Network blip / transient error: do NOT fail permanently, keep retrying
+        console.warn('Doc 1 polling transient check error:', err);
+      }
+
+      if (isSubscribed && !isCancelledRef.current) {
+        timerId = setTimeout(poll, currentInterval);
+      }
+    };
+
+    // Kick off initial poll
+    poll();
+
+    return () => {
+      isSubscribed = false;
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+    };
+  }, [doc1?.docId, statusDoc1, retryTrigger1]);
+
+  // =========================================================================
+  // Independent Polling for Document 2
+  // =========================================================================
+  useEffect(() => {
+    if (!doc2?.docId || statusDoc2 !== 'processing') {
+      return;
+    }
+
+    let isSubscribed = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const startTime = Date.now();
+    const MAX_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes safety cap
+    let currentInterval = 1500; // Start at 1.5s and backoff to 5s
+
+    setIsTimeoutDoc2(false);
+    setUploadError(null);
+
+    const poll = async () => {
+      if (!isSubscribed || isCancelledRef.current) return;
+
+      const elapsed = Date.now() - startTime;
+
+      // Check safety cap (10 minutes)
+      if (elapsed >= MAX_TIMEOUT_MS) {
+        if (isSubscribed) {
+          setIsTimeoutDoc2(true);
+        }
+        return;
+      }
+
+      try {
+        const check = await DocumentApi.getDocument(doc2.docId!);
+        if (!isSubscribed || isCancelledRef.current) return;
+
+        // Terminal status 1: done
+        if (check.structure_status === 'done') {
+          setStatusDoc2('done');
+          setIsTimeoutDoc2(false);
+          const updated: DocumentInfo = {
+            ...doc2,
+            title: check.title || doc2.title,
+            structureStatus: 'done',
+            status: 'ready',
+          };
+          setDoc2(updated);
+          try {
+            sessionStorage.setItem(PENDING_DOC2_KEY, JSON.stringify(updated));
+          } catch (_) {}
+          return;
+        }
+
+        // Terminal status 2: explicit backend failure
+        if (
+          check.structure_status === 'failed' ||
+          (check as any).structure_status === 'error'
+        ) {
+          setStatusDoc2('failed');
+          setIsTimeoutDoc2(false);
+          setUploadError('پردازش و ساختاردهی سند دوم با خطای سرور مواجه شد.');
+          return;
+        }
+
+        // Non-terminal: 'pending' or 'processing' or 'partial'
+        // Progressive backoff: 1.5s -> 2.2s -> 2.9s -> 3.6s -> 4.3s -> max 5.0s
+        currentInterval = Math.min(5000, currentInterval + 700);
+      } catch (err: any) {
+        // Network blip / transient error: do NOT fail permanently, keep retrying
+        console.warn('Doc 2 polling transient check error:', err);
+      }
+
+      if (isSubscribed && !isCancelledRef.current) {
+        timerId = setTimeout(poll, currentInterval);
+      }
+    };
+
+    // Kick off initial poll
+    poll();
+
+    return () => {
+      isSubscribed = false;
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+    };
+  }, [doc2?.docId, statusDoc2, retryTrigger2]);
 
   // Upload and track Document 1
   const handleUploadFile1 = async (file: File) => {
@@ -163,6 +328,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
 
     setDoc1(newDoc);
     setStatusDoc1('uploading');
+    setIsTimeoutDoc1(false);
+    setElapsedSecondsDoc1(0);
     setUploadError(null);
 
     try {
@@ -172,6 +339,10 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
       newDoc.docId = uploaded.doc_id;
       newDoc.structureStatus = uploaded.structure_status;
       setDoc1({ ...newDoc });
+
+      try {
+        sessionStorage.setItem(PENDING_DOC1_KEY, JSON.stringify(newDoc));
+      } catch (_) {}
 
       if (uploaded.structure_status === 'done') {
         setStatusDoc1('done');
@@ -212,6 +383,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
 
     setDoc2(newDoc);
     setStatusDoc2('uploading');
+    setIsTimeoutDoc2(false);
+    setElapsedSecondsDoc2(0);
     setUploadError(null);
 
     try {
@@ -221,6 +394,10 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
       newDoc.docId = uploaded.doc_id;
       newDoc.structureStatus = uploaded.structure_status;
       setDoc2({ ...newDoc });
+
+      try {
+        sessionStorage.setItem(PENDING_DOC2_KEY, JSON.stringify(newDoc));
+      } catch (_) {}
 
       if (uploaded.structure_status === 'done') {
         setStatusDoc2('done');
@@ -233,6 +410,40 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
       setStatusDoc2('failed');
       setUploadError(err.message || 'خطا در بارگذاری سند دوم در سرور');
     }
+  };
+
+  const handleRetryDoc1 = () => {
+    setIsTimeoutDoc1(false);
+    setElapsedSecondsDoc1(0);
+    setStatusDoc1('processing');
+    setRetryTrigger1((prev) => prev + 1);
+  };
+
+  const handleRetryDoc2 = () => {
+    setIsTimeoutDoc2(false);
+    setElapsedSecondsDoc2(0);
+    setStatusDoc2('processing');
+    setRetryTrigger2((prev) => prev + 1);
+  };
+
+  const handleRemoveDoc1 = () => {
+    setDoc1(null);
+    setStatusDoc1('idle');
+    setIsTimeoutDoc1(false);
+    setElapsedSecondsDoc1(0);
+    try {
+      sessionStorage.removeItem(PENDING_DOC1_KEY);
+    } catch (_) {}
+  };
+
+  const handleRemoveDoc2 = () => {
+    setDoc2(null);
+    setStatusDoc2('idle');
+    setIsTimeoutDoc2(false);
+    setElapsedSecondsDoc2(0);
+    try {
+      sessionStorage.removeItem(PENDING_DOC2_KEY);
+    } catch (_) {}
   };
 
   const handleFileChange1 = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,9 +497,9 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
     setUploadError(null);
 
     try {
-      // 5. Send both doc_ids via /analyze/workflow/run
+      // Send both doc_ids via /analyze/workflow/run
       const runRes = await AnalyzeApi.runWorkflow(doc1.docId, doc2.docId);
-      // 6. Navigate to ProcessingScreen with the run_id
+      // Navigate to ProcessingScreen with the run_id
       onStartAnalysis(doc1, doc2, runRes.run_id);
     } catch (err: any) {
       console.error('Failed to run workflow:', err);
@@ -347,7 +558,7 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                 </div>
                 <button
                   onClick={() => setUploadError(null)}
-                  className="text-red-500 hover:text-red-700 p-1 rounded-lg"
+                  className="text-red-500 hover:text-red-700 p-1 rounded-lg cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[16px]">close</span>
                 </button>
@@ -388,10 +599,20 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                       <span className="material-symbols-outlined text-[14px] text-[#4A634E]">check_circle</span>
                       <span>پایگاه داده ساخته شد</span>
                     </span>
+                  ) : isTimeoutDoc1 ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                      <span className="material-symbols-outlined text-[14px] text-amber-700">timer</span>
+                      <span>پایان مهلت انتظار</span>
+                    </span>
                   ) : statusDoc1 === 'processing' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping"></span>
                       <span>درحال ساخت پایگاه داده...</span>
+                      {elapsedSecondsDoc1 > 0 && (
+                        <span className="text-[10px] text-amber-700 font-mono">
+                          ({Math.floor(elapsedSecondsDoc1 / 60)}:{String(elapsedSecondsDoc1 % 60).padStart(2, '0')})
+                        </span>
+                      )}
                     </span>
                   ) : statusDoc1 === 'uploading' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/80">
@@ -426,6 +647,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                             {doc1.fileSize || 'سند PDF'} •{' '}
                             {statusDoc1 === 'done'
                               ? 'آماده تحلیل'
+                              : isTimeoutDoc1
+                              ? 'نیاز به بررسی وضعیت'
                               : statusDoc1 === 'processing'
                               ? 'درحال ساخت پایگاه داده'
                               : statusDoc1 === 'uploading'
@@ -435,16 +658,55 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => {
-                          setDoc1(null);
-                          setStatusDoc1('idle');
-                        }}
+                        onClick={handleRemoveDoc1}
                         className="text-[#71756E] hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
                         title="حذف فایل"
                       >
                         <span className="material-symbols-outlined text-[18px]">close</span>
                       </button>
                     </div>
+
+                    {/* Timeout Alert with Retry Button */}
+                    {isTimeoutDoc1 && (
+                      <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-[18px] text-amber-700 shrink-0 mt-0.5">
+                            schedule
+                          </span>
+                          <span className="leading-relaxed">
+                            زمان بررسی بیش از حد انتظار به طول انجامید، اما پردازش ممکن است در سرور کامل شده باشد.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRetryDoc1}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-semibold text-xs shadow-xs transition cursor-pointer shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">sync</span>
+                          <span>بررسی مجدد</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Informative Long Processing Notice (Not Red Error) */}
+                    {statusDoc1 === 'processing' && !isTimeoutDoc1 && elapsedSecondsDoc1 >= 15 && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 text-amber-900 text-[11px] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-amber-700 animate-spin shrink-0">
+                          progress_activity
+                        </span>
+                        <span className="leading-relaxed">
+                          استخراج متن و ساخت بردارها ممکن است تا چند دقیقه طول بکشد، لطفاً شکیبا باشید...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Success indicator */}
+                    {statusDoc1 === 'done' && (
+                      <div className="mt-3 p-2 rounded-xl bg-[#E8EFE9]/70 border border-[#D2DFD4]/70 text-[#2B3B2E] text-[11px] flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] text-[#4A634E]">check_circle</span>
+                        <span>ساختار سند استخراج شد و آماده مقایسه است.</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div
@@ -516,10 +778,20 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                       <span className="material-symbols-outlined text-[14px] text-[#4A634E]">check_circle</span>
                       <span>پایگاه داده ساخته شد</span>
                     </span>
+                  ) : isTimeoutDoc2 ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                      <span className="material-symbols-outlined text-[14px] text-amber-700">timer</span>
+                      <span>پایان مهلت انتظار</span>
+                    </span>
                   ) : statusDoc2 === 'processing' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping"></span>
                       <span>درحال ساخت پایگاه داده...</span>
+                      {elapsedSecondsDoc2 > 0 && (
+                        <span className="text-[10px] text-amber-700 font-mono">
+                          ({Math.floor(elapsedSecondsDoc2 / 60)}:{String(elapsedSecondsDoc2 % 60).padStart(2, '0')})
+                        </span>
+                      )}
                     </span>
                   ) : statusDoc2 === 'uploading' ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/80">
@@ -554,6 +826,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                             {doc2.fileSize || 'سند PDF'} •{' '}
                             {statusDoc2 === 'done'
                               ? 'آماده تحلیل'
+                              : isTimeoutDoc2
+                              ? 'نیاز به بررسی وضعیت'
                               : statusDoc2 === 'processing'
                               ? 'درحال ساخت پایگاه داده'
                               : statusDoc2 === 'uploading'
@@ -563,16 +837,55 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => {
-                          setDoc2(null);
-                          setStatusDoc2('idle');
-                        }}
+                        onClick={handleRemoveDoc2}
                         className="text-[#71756E] hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
                         title="حذف فایل"
                       >
                         <span className="material-symbols-outlined text-[18px]">close</span>
                       </button>
                     </div>
+
+                    {/* Timeout Alert with Retry Button */}
+                    {isTimeoutDoc2 && (
+                      <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-[18px] text-amber-700 shrink-0 mt-0.5">
+                            schedule
+                          </span>
+                          <span className="leading-relaxed">
+                            زمان بررسی بیش از حد انتظار به طول انجامید، اما پردازش ممکن است در سرور کامل شده باشد.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRetryDoc2}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-semibold text-xs shadow-xs transition cursor-pointer shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">sync</span>
+                          <span>بررسی مجدد</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Informative Long Processing Notice (Not Red Error) */}
+                    {statusDoc2 === 'processing' && !isTimeoutDoc2 && elapsedSecondsDoc2 >= 15 && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 text-amber-900 text-[11px] flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-amber-700 animate-spin shrink-0">
+                          progress_activity
+                        </span>
+                        <span className="leading-relaxed">
+                          استخراج متن و ساخت بردارها ممکن است تا چند دقیقه طول بکشد، لطفاً شکیبا باشید...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Success indicator */}
+                    {statusDoc2 === 'done' && (
+                      <div className="mt-3 p-2 rounded-xl bg-[#E8EFE9]/70 border border-[#D2DFD4]/70 text-[#2B3B2E] text-[11px] flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] text-[#4A634E]">check_circle</span>
+                        <span>ساختار سند استخراج شد و آماده مقایسه است.</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div
@@ -656,9 +969,12 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
             {/* Subtext under button: Required by prompt */}
             <div className="mt-3 flex items-center justify-center min-h-[24px]">
               {isBuildingDatabase ? (
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-50/90 border border-amber-200 text-amber-800 text-xs font-semibold shadow-xs">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50/90 border border-amber-200 text-amber-800 text-xs font-semibold shadow-xs">
                   <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
-                  <span>درحال ساخت پایگاه داده</span>
+                  <span>درحال ساخت پایگاه داده و استخراج هوشمند اسناد</span>
+                  <span className="text-[11px] text-amber-700 font-normal">
+                    (پردازش ممکن است تا چند دقیقه طول بکشد)
+                  </span>
                 </div>
               ) : isBothDone ? (
                 <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#E8EFE9] border border-[#D2DFD4] text-[#3D5241] text-xs font-semibold shadow-xs">

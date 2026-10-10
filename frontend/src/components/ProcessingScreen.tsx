@@ -74,9 +74,34 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({
 
   const activeRunIdRef = useRef<string | null>(initialRunId);
   const isCancelledRef = useRef<boolean>(false);
-  const activeStepRef = useRef<number>(isRetry ? (initialStep || 3) : 1);
-  const progressRef = useRef<number>(isRetry ? (initialProgress || 68) : 12);
+  const highestStepRef = useRef<number>(isRetry ? (initialStep || 1) : 1);
+  const highestProgressRef = useRef<number>(isRetry ? (initialProgress || 12) : 12);
+  const activeStepRef = useRef<number>(isRetry ? (initialStep || 1) : 1);
+  const progressRef = useRef<number>(isRetry ? (initialProgress || 12) : 12);
   const statusMessageRef = useRef<string>(statusMessage);
+
+  // Monotonic step & progress updater: guaranteed never to downgrade or jitter backwards
+  const updateStepAndProgress = (newStep: number, newProgress: number, message?: string) => {
+    const safeStep = Math.max(highestStepRef.current, newStep);
+    highestStepRef.current = safeStep;
+    setActiveStep(safeStep);
+
+    const safeProgress = Math.max(highestProgressRef.current, newProgress);
+    highestProgressRef.current = safeProgress;
+    setProgress(safeProgress);
+
+    if (message) {
+      setStatusMessage(message);
+    }
+
+    setStepStates({
+      1: safeStep > 1 ? 'completed' : safeStep === 1 ? 'in_progress' : 'queued',
+      2: safeStep > 2 ? 'completed' : safeStep === 2 ? 'in_progress' : 'queued',
+      3: safeStep > 3 ? 'completed' : safeStep === 3 ? 'in_progress' : 'queued',
+      4: safeStep > 4 ? 'completed' : safeStep === 4 ? 'in_progress' : 'queued',
+      5: safeStep === 5 ? (safeProgress >= 100 ? 'completed' : 'in_progress') : 'queued',
+    });
+  };
 
   useEffect(() => {
     activeStepRef.current = activeStep;
@@ -153,19 +178,11 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({
           throw new Error('عدم دریافت شناسه اجرای تحلیل از سرور');
         }
 
-        // Initial status message for polling
-        setStatusMessage('در حال پیگیری وضعیت تحلیل از سرور...');
-        setActiveStep(2);
-        setStepStates({
-          1: 'completed',
-          2: 'in_progress',
-          3: 'queued',
-          4: 'queued',
-          5: 'queued',
-        });
+        // Initial status message for polling - do not prematurely advance to step 2
+        updateStepAndProgress(1, 20, 'در حال پیگیری وضعیت تحلیل از سرور...');
 
         // Step 3 & 4: Run Polling against status endpoint (/analyze/status/{run_id})
-        // Increased polling interval as requested to avoid excessive requests to backend
+        // Polling interval 4000ms to maintain stability without excessive requests
         const RUN_POLLING_INTERVAL_MS = 4000;
         let completed = false;
         while (!completed && !isCancelledRef.current) {
@@ -185,70 +202,23 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({
           }
 
           if (statusRes.status === 'queued') {
-            setActiveStep(1);
-            setProgress(20);
-            setStatusMessage('در صف پردازش هوش مصنوعی...');
+            updateStepAndProgress(1, 22, 'در صف پردازش هوش مصنوعی...');
           } else if (statusRes.status === 'running') {
             const step = statusRes.step as WorkflowStep;
             if (step === 'load_context') {
-              setActiveStep(1);
-              setStepStates({
-                1: 'in_progress',
-                2: 'queued',
-                3: 'queued',
-                4: 'queued',
-                5: 'queued',
-              });
-              setProgress(28);
-              setStatusMessage('بارگذاری بافت اسناد و استخراج متن...');
+              updateStepAndProgress(1, 28, 'بارگذاری بافت اسناد و استخراج متن...');
             } else if (step === 'load_vector_stores') {
-              setActiveStep(2);
-              setStepStates({
-                1: 'completed',
-                2: 'in_progress',
-                3: 'queued',
-                4: 'queued',
-                5: 'queued',
-              });
-              setProgress(50);
-              setStatusMessage('آماده‌سازی پایگاه برداری و بازیابی ترکیبی...');
+              updateStepAndProgress(2, 50, 'آماده‌سازی پایگاه برداری و بازیابی ترکیبی...');
             } else if (step === 'retrieve_candidates') {
-              setActiveStep(3);
-              setStepStates({
-                1: 'completed',
-                2: 'completed',
-                3: 'in_progress',
-                4: 'queued',
-                5: 'queued',
-              });
-              setProgress(72);
-              setStatusMessage('بازیابی و تطبیق مواد متناظر (Semantic + BM25)...');
+              updateStepAndProgress(3, 72, 'بازیابی و تطبیق مواد متناظر (Semantic + BM25)...');
             } else if (step === 'analyze_with_llm') {
-              setActiveStep(4);
-              setStepStates({
-                1: 'completed',
-                2: 'completed',
-                3: 'completed',
-                4: 'in_progress',
-                5: 'queued',
-              });
-              setProgress(90);
-              setStatusMessage('تحلیل روابط حقوقی و تضادیابی با هوش مصنوعی...');
+              updateStepAndProgress(4, 90, 'تحلیل روابط حقوقی و تضادیابی با هوش مصنوعی...');
             }
           } else if (statusRes.status === 'completed') {
             completed = true;
 
             // Step 5: Preparing report & compiling documents in background
-            setActiveStep(5);
-            setStepStates({
-              1: 'completed',
-              2: 'completed',
-              3: 'completed',
-              4: 'completed',
-              5: 'in_progress',
-            });
-            setProgress(92);
-            setStatusMessage('آماده‌سازی گزارش • در حال دریافت متن کامل دو سند از سرور...');
+            updateStepAndProgress(5, 92, 'آماده‌سازی گزارش • در حال دریافت متن کامل دو سند از سرور...');
 
             // Compile documents and project relations onto compiled clauses in background
             const compiledResult = await compileDocumentsWithAnalysis({
@@ -257,14 +227,18 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({
               analysisId: statusRes.analysis_id,
               relations: statusRes.relations || [],
               onProgress: (msg, pct) => {
-                if (pct) setProgress(pct);
-                setStatusMessage(`آماده‌سازی گزارش • ${msg}`);
+                if (pct) {
+                  updateStepAndProgress(5, pct, `آماده‌سازی گزارش • ${msg}`);
+                } else {
+                  setStatusMessage(`آماده‌سازی گزارش • ${msg}`);
+                }
               },
             });
 
             if (isCancelledRef.current) return;
 
             // Mark compilation and output preparation complete
+            highestProgressRef.current = 100;
             setProgress(100);
             setStepStates({
               1: 'completed',
@@ -415,23 +389,8 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({
               </div>
             </div>
 
-            {/* Horizontal Progress Bar with English Numbers */}
-            <div className="mt-5 pt-4 border-t border-[#E8E4DB]/60">
-              <div className="flex items-center justify-between text-xs text-[#71756E] mb-1.5 font-mono" dir="ltr">
-                <span>0%</span>
-                <span className="font-bold text-[#3D5241] text-xs">{progress}%</span>
-                <span>100%</span>
-              </div>
-              <div className="w-full bg-[#E8EFE9] h-2.5 rounded-full overflow-hidden p-0.5 border border-[#D2DFD4]/70">
-                <div
-                  className="h-full bg-gradient-to-r from-[#4A634E] to-[#5C7A60] rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-
             {/* 5 Step Indicator Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3 my-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
               {/* Step 1 */}
               <div
                 className={`p-3 rounded-2xl shadow-sm flex items-center gap-2.5 transition-all ${

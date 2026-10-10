@@ -30,13 +30,17 @@ export const CompareScreen: React.FC<CompareScreenProps> = ({
   const docAContainerRef = useRef<HTMLDivElement>(null);
   const docBContainerRef = useRef<HTMLDivElement>(null);
 
-  // Sync activeRelationKey when relations map changes
+  // Sync activeRelationKey when analysisId or relations map changes
   useEffect(() => {
     const keys = Object.keys(activeRelationsMap);
-    if (!activeRelationsMap[activeRelationKey] && keys.length > 0) {
-      setActiveRelationKey(keys[0]);
+    if (keys.length > 0) {
+      if (!activeRelationsMap[activeRelationKey] || analysisId) {
+        setActiveRelationKey(keys[0]);
+      }
+    } else {
+      setActiveRelationKey('');
     }
-  }, [activeRelationsMap, activeRelationKey]);
+  }, [analysisId, relations]);
 
   const activeRelation: Relation | null =
     activeRelationsMap[activeRelationKey] ||
@@ -170,7 +174,25 @@ export const CompareScreen: React.FC<CompareScreenProps> = ({
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#f7f3ec] text-[#1c1c18] select-none">
       {/* Main App Workspace */}
-      <main className="w-full h-screen flex flex-col pt-16 md:pt-20 pb-3 px-4 sm:px-10 md:px-16 lg:px-20 overflow-hidden relative max-w-5xl mx-auto">
+      <main className="w-full h-screen flex flex-col pt-14 md:pt-16 pb-3 px-4 sm:px-10 md:px-16 lg:px-20 overflow-hidden relative max-w-5xl mx-auto">
+        {/* Top Analysis Header Info */}
+        <div className="flex items-center justify-between pb-2 px-1 text-xs">
+          <div className="flex items-center gap-2">
+            {analysisId && (
+              <span className="font-mono text-[11px] font-bold text-[#3e5a44] bg-[#e8efe9] px-2.5 py-0.5 rounded-xl border border-[#d2dfd4]">
+                تحلیل #{Math.ceil(analysisId / 2)}
+              </span>
+            )}
+          </div>
+
+          {(doc1?.date || doc2?.date) && (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#737972]">
+              <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+              <span>{doc1?.date || doc2?.date}</span>
+            </div>
+          )}
+        </div>
+
         {/* Dual Corresponding Documents (Symmetric Two-Column Central Stage) */}
         <div className="w-full flex-1 grid grid-cols-1 md:grid-cols-2 gap-5 min-h-0 items-stretch relative">
           {/* Document 1 (سند اول - نسخه مبنا - سمت راست در RTL) */}
@@ -383,34 +405,31 @@ export const CompareScreen: React.FC<CompareScreenProps> = ({
         </div>
 
         {/* Floating Bottom Overlay (Dock for AI Legal Analysis) */}
-        <div className="fixed bottom-4 sm:bottom-5 left-0 right-0 z-30 flex justify-center pointer-events-none px-4 md:px-12">
-          {/* Main Floating Glass Capsule with seamless, borderless ambient feather */}
-          <div className="relative w-full max-w-5xl pointer-events-auto rounded-3xl bg-white/88 backdrop-blur-2xl border border-white/90 shadow-[0_16px_48px_rgba(20,26,21,0.12),0_4px_16px_rgba(20,26,21,0.06)] p-4 md:py-3.5 md:px-6 transition-all duration-300 ring-1 ring-[#3e5a44]/15 text-right">
-            {/* Soft, fully unconstrained radial blur aura - smoothly fades to zero with no hard box cutoffs */}
+        <div className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-30 flex justify-center pointer-events-none px-4 md:px-10 lg:px-16">
+          {/* Main Floating Glass Capsule with ultra-compact, clean layout */}
+          <div className="relative w-full max-w-5xl pointer-events-auto rounded-2xl bg-white/95 backdrop-blur-2xl border border-white/95 shadow-[0_12px_36px_rgba(20,26,21,0.12),0_4px_12px_rgba(20,26,21,0.05)] py-2.5 px-4 sm:px-5 transition-all duration-300 ring-1 ring-[#3e5a44]/15 text-right">
+            {/* Ambient soft glow */}
             <div
-              className="absolute -inset-6 -z-10 rounded-[44px] pointer-events-none bg-white/40 backdrop-blur-xl [mask-image:radial-gradient(ellipse_at_center,black_45%,transparent_95%)] [-webkit-mask-image:radial-gradient(ellipse_at_center,black_45%,transparent_95%)] opacity-70"
+              className="absolute -inset-3 -z-10 rounded-[32px] pointer-events-none bg-white/50 backdrop-blur-xl [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_95%)] [-webkit-mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_95%)] opacity-70"
               aria-hidden="true"
             />
 
             {activeRelation ? (
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                {/* Badge & Clause Reference */}
-                <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                  <div className="flex items-center gap-2 pl-1">
+              <div className="flex flex-col gap-1.5">
+                {/* Row 1: Badges & Quick Navigation Controls */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#ece8e1]/80 gap-2 flex-wrap">
+                  {/* Badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <span
-                      className={`w-2.5 h-2.5 rounded-full ${
+                      className={`w-2 h-2 rounded-full shrink-0 ${
                         activeRelation.category === 'conflict'
-                          ? 'bg-[#d9534f] ring-4 ring-red-100'
-                          : 'bg-[#3e5a44] ring-4 ring-emerald-100'
+                          ? 'bg-[#d9534f] ring-2 ring-red-100'
+                          : 'bg-[#3e5a44] ring-2 ring-emerald-100'
                       }`}
                     />
-                    <span className="font-bold text-[#1c1c18] text-[13px]">{activeRelation.title}</span>
-                  </div>
-                  <span className="text-[#c2c8c0] hidden md:inline">|</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#737972] text-[11px]">رابطه:</span>
+
                     <span
-                      className={`px-2.5 py-0.5 rounded-lg font-bold text-[10.5px] border ${
+                      className={`px-2 py-0.5 rounded-md font-bold text-[10.5px] border shadow-2xs ${
                         activeRelation.category === 'conflict'
                           ? 'bg-red-50 text-[#d9534f] border-red-200'
                           : 'bg-[#edf5ee] text-[#3e5a44] border-[#d0e2d3]'
@@ -418,30 +437,57 @@ export const CompareScreen: React.FC<CompareScreenProps> = ({
                     >
                       {activeRelation.relation}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#737972] text-[11px]">نوع:</span>
-                    <span className="px-2.5 py-0.5 rounded-lg font-medium text-[10.5px] bg-[#f1ede6] text-[#1c1c18] border border-[#e6e2da]">
+
+                    <span className="px-2 py-0.5 rounded-md font-medium text-[10.5px] bg-[#f7f5f0] text-[#2c332e] border border-[#e6e2da]">
                       {activeRelation.type}
                     </span>
-                  </div>
-                  {activeRelation.confidence !== undefined && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#737972] text-[11px]">اطمینان:</span>
-                      <span className="px-2 py-0.5 rounded-lg font-mono font-bold text-[10.5px] bg-[#E8EFE9] text-[#3D5241]">
-                        {Math.round(activeRelation.confidence * 100)}٪
+
+                    {activeRelation.confidence !== undefined && (
+                      <span className="px-1.5 py-0.5 rounded-md font-mono font-bold text-[10px] bg-[#E8EFE9] text-[#3D5241]">
+                        اطمینان: {Math.round(activeRelation.confidence * 100)}%
                       </span>
-                    </div>
-                  )}
+                    )}
+                  </div>
+
+                  {/* Navigation Prev / Next & List count */}
+                  <div className="flex items-center gap-1 shrink-0 mr-auto">
+                    {relationKeys.length > 1 && (
+                      <span className="text-[10px] text-[#737972] font-mono px-1.5 py-0.5 bg-[#f5f2eb] rounded-md border border-[#e6e2da]">
+                        {currentRelIndex + 1} از {relationKeys.length}
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handlePrevRelation}
+                      disabled={relationKeys.length <= 1}
+                      className="p-0.5 rounded-md text-[#737972] hover:text-[#1c1c18] hover:bg-[#f1ede6] disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                      title="رابطه قبلی (کلید جهت راست)"
+                      aria-label="رابطه قبلی"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNextRelation}
+                      disabled={relationKeys.length <= 1}
+                      className="p-0.5 rounded-md text-[#737972] hover:text-[#1c1c18] hover:bg-[#f1ede6] disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                      title="رابطه بعدی (کلید جهت چپ)"
+                      aria-label="رابطه بعدی"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* AI Legal Analysis Reasoning */}
-                <p className="text-[#424842] text-[11.5px] leading-relaxed text-justify flex-1 md:pr-4 md:border-r border-[#ece8e1]">
+                {/* Row 2: Clean, compact Legal Analysis reasoning text without bulky icon */}
+                <p className="text-[#323833] text-[11.5px] leading-relaxed text-justify font-normal m-0 line-clamp-2 hover:line-clamp-none transition-all">
                   {activeRelation.reasoning}
                 </p>
               </div>
             ) : (
-              <div className="flex items-center justify-center text-xs py-1 text-[#71756E]">
+              <div className="flex items-center justify-between text-xs py-0.5 text-[#71756E]">
                 <span>رابطه یا تعارضی برای نمایش یافت نشد.</span>
               </div>
             )}

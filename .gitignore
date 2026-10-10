@@ -326,3 +326,5 @@ STATUS.md
 
 backend/storage/*
 !backend/storage/.gitkeep
+backend/storage/checkpoints.sqlite-wal
+/backend/storage

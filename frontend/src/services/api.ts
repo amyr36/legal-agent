@@ -277,27 +277,31 @@ export const DocumentApi = {
     return apiFetch<StructuredRecord[]>(`/api/v1/document/${documentId}/structure`);
   },
 
-  // Helper: Poll document structure until done or failed
+  // Helper: Poll document structure until done or explicit failure
   async pollStructureStatus(
     documentId: number,
     onProgress?: (status: string) => void,
-    intervalMs = 2000,
-    maxRetries = 60
+    initialIntervalMs = 1500,
+    maxTimeoutMs = 10 * 60 * 1000 // 10 minutes safety cap
   ): Promise<DocumentRead> {
-    for (let i = 0; i < maxRetries; i++) {
+    const startTime = Date.now();
+    let currentInterval = initialIntervalMs;
+    while (Date.now() - startTime < maxTimeoutMs) {
       const doc = await this.getDocument(documentId);
       if (onProgress) onProgress(doc.structure_status);
 
       if (doc.structure_status === 'done') {
         return doc;
       }
-      if (doc.structure_status === 'failed') {
-        throw new Error('استخراج و ساختاردهی سند با هوش مصنوعی با خطا مواجه شد.');
+      if (doc.structure_status === 'failed' || (doc as any).structure_status === 'error') {
+        throw new Error('استخراج و ساختاردهی سند با خطا مواجه شد.');
       }
 
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await new Promise((resolve) => setTimeout(resolve, currentInterval));
+      // Progressive backoff: start from 1.5s up to 5s
+      currentInterval = Math.min(5000, currentInterval + 500);
     }
-    throw new Error('زمان انتظار برای ساختاردهی سند به پایان رسید.');
+    throw new Error('زمان انتظار برای ساختاردهی سند به پایان رسید (timeout).');
   },
 };
 
@@ -699,6 +703,21 @@ export function formatPersianTimeAgo(isoString?: string): string {
   }
 }
 
+// Convert ISO time to exact Persian Date string (e.g. ۱۴۰۵/۰۷/۱۹)
+export function formatPersianDate(isoString?: string): string {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch {
+    return isoString;
+  }
+}
+
 // ==========================================
 // Compatibility Mock Data & Default Service
 // (Available as fallback when backend is offline)
@@ -1063,19 +1082,107 @@ export const LegalApiService = {
   resumeWorkflow: AnalyzeApi.resumeWorkflow,
 
   // History
+  // Uses GET /analyze/history to get items with document_a_id and document_b_id,
+  // then fetches each document title via GET /api/v1/document/{document_id}
+  // and formats the item title as: "عنوان سند اول، عنوان سند دوم، تاریخ"
   fetchHistory: async (): Promise<HistoryItem[]> => {
     try {
       const items = await HistoryApi.getHistory();
       if (!items || items.length === 0) return [];
-      return items.map((item) => ({
-        id: `hist_${item.analysis_id}`,
-        analysisId: item.analysis_id,
-        title: `${item.doc_a.title} و ${item.doc_b.title}`,
-        timeAgo: formatPersianTimeAgo(item.created_at),
-        doc1Name: item.doc_a.title,
-        doc2Name: item.doc_b.title,
-        relationsCount: 0,
-      }));
+
+      // Backend generates 2 analysis_ids per run (e.g. 1 & 2, 3 & 4).
+      // Filter out duplicates and only display odd analysis_ids (1, 3, 5, ...)
+      // with natural sequential numbers to user: 1 -> 1, 3 -> 2, 5 -> 3, etc.
+      let oddItems = items.filter((item) => item.analysis_id % 2 !== 0);
+
+      // Safeguard: if for any unexpected reason no odd items exist, deduplicate by Math.ceil(analysis_id / 2)
+      if (oddItems.length === 0 && items.length > 0) {
+        const seen = new Set<number>();
+        oddItems = items.filter((item) => {
+          const num = Math.ceil(item.analysis_id / 2);
+          if (seen.has(num)) return false;
+          seen.add(num);
+          return true;
+        });
+      }
+
+      // Collect unique document IDs to fetch titles efficiently with cache
+      const docTitlesCache = new Map<number, string>();
+
+      const docIdsToFetch = new Set<number>();
+      oddItems.forEach((item) => {
+        const idA = item.document_a_id ?? item.doc_a?.doc_id;
+        const idB = item.document_b_id ?? item.doc_b?.doc_id;
+        if (idA && !item.doc_a?.title) docIdsToFetch.add(idA);
+        if (idB && !item.doc_b?.title) docIdsToFetch.add(idB);
+      });
+
+      // Pre-fill cache if title was already provided by backend
+      oddItems.forEach((item) => {
+        if (item.doc_a?.doc_id && item.doc_a.title) {
+          docTitlesCache.set(item.doc_a.doc_id, item.doc_a.title);
+        }
+        if (item.doc_b?.doc_id && item.doc_b.title) {
+          docTitlesCache.set(item.doc_b.doc_id, item.doc_b.title);
+        }
+      });
+
+      // Fetch titles in parallel for all required document IDs
+      if (docIdsToFetch.size > 0) {
+        await Promise.allSettled(
+          Array.from(docIdsToFetch).map(async (docId) => {
+            try {
+              const doc = await DocumentApi.getDocument(docId);
+              if (doc && doc.title) {
+                docTitlesCache.set(docId, doc.title);
+              }
+            } catch (e) {
+              console.warn(`Could not fetch document title for doc_id=${docId}:`, e);
+              docTitlesCache.set(docId, `سند ${docId}`);
+            }
+          })
+        );
+      }
+
+      // Map history items into format:
+      // "عنوان سند اول، عنوان سند دوم، تاریخ"
+      // Natural user-facing numbering: analysis_id = 1 -> 1, 3 -> 2, 5 -> 3, etc.
+      return oddItems.map((item) => {
+        const docAId = item.document_a_id ?? item.doc_a?.doc_id;
+        const docBId = item.document_b_id ?? item.doc_b?.doc_id;
+
+        const titleA =
+          (docAId ? docTitlesCache.get(docAId) : null) ||
+          item.doc_a?.title ||
+          (docAId ? `سند ${docAId}` : 'سند اول');
+
+        const titleB =
+          (docBId ? docTitlesCache.get(docBId) : null) ||
+          item.doc_b?.title ||
+          (docBId ? `سند ${docBId}` : 'سند دوم');
+
+        const formattedDate = formatPersianDate(item.created_at) || formatPersianTimeAgo(item.created_at);
+
+        // Required prompt format: "عنوان سند اول، عنوان سند دوم، تاریخ"
+        const fullDisplayTitle = `${titleA}، ${titleB}، ${formattedDate}`;
+
+        // Natural user-facing display number: (analysis_id + 1) / 2
+        const displayNumber = Math.ceil(item.analysis_id / 2);
+
+        return {
+          id: `hist_${item.analysis_id}`,
+          analysisId: item.analysis_id, // Keeps real backend odd id for API calls
+          displayNumber, // Natural sequential number shown to user (1, 2, 3...)
+          docAId,
+          docBId,
+          title: fullDisplayTitle,
+          timeAgo: formatPersianTimeAgo(item.created_at),
+          formattedDate,
+          doc1Name: titleA,
+          doc2Name: titleB,
+          relationsCount: 0,
+        };
+      });
     } catch (err) {
       console.warn('Backend history unreachable:', err);
       return [];

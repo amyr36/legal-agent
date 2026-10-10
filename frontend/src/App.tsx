@@ -13,6 +13,7 @@ import {
   registerUnauthorizedHandler,
   transformStructureToClauses,
   formatPersianTimeAgo,
+  formatPersianDate,
 } from './services/api';
 import { Sidebar } from './components/Sidebar';
 import { AuthScreen } from './components/AuthScreen';
@@ -36,6 +37,7 @@ export default function App() {
     );
   });
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [doc1, setDoc1] = useState<DocumentInfo | null>(null);
   const [doc2, setDoc2] = useState<DocumentInfo | null>(null);
   const [isRetry, setIsRetry] = useState(false);
@@ -56,6 +58,21 @@ export default function App() {
   const [clausesDoc2, setClausesDoc2] = useState<Clause[]>([]);
   const [relations, setRelations] = useState<Record<string, Relation>>({});
 
+  // Function to fetch history from /analyze/history
+  const refreshHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const items = await LegalApiService.fetchHistory();
+      if (items) {
+        setHistory(items);
+      }
+    } catch (err) {
+      console.warn('Error fetching history:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   // Register unauthorized listener to return to login on 401
   useEffect(() => {
     registerUnauthorizedHandler(() => {
@@ -74,11 +91,7 @@ export default function App() {
   // Fetch real history whenever user enters non-login screens
   useEffect(() => {
     if (currentScreen !== 'login') {
-      LegalApiService.fetchHistory().then((items) => {
-        if (items && items.length > 0) {
-          setHistory(items);
-        }
-      });
+      refreshHistory();
     }
   }, [currentScreen]);
 
@@ -119,9 +132,7 @@ export default function App() {
     setCurrentScreen('compare');
 
     // Refresh history
-    LegalApiService.fetchHistory().then((items) => {
-      if (items && items.length > 0) setHistory(items);
-    });
+    refreshHistory();
   };
 
   const handleProcessingError = (
@@ -162,39 +173,82 @@ export default function App() {
   const handleNewAnalysis = () => {
     setIsRetry(false);
     setActiveRunId(null);
+    setActiveAnalysisId(null);
+    setDoc1(null);
+    setDoc2(null);
+    try {
+      sessionStorage.removeItem('legal_agent_pending_doc_1');
+      sessionStorage.removeItem('legal_agent_pending_doc_2');
+    } catch (_) {}
     setCurrentScreen('upload');
   };
 
   const handleSelectHistoryItem = async (item: HistoryItem) => {
     if (item.analysisId) {
       try {
+        // Send analyze_id to /analyze/history/{analyze_id}
         const detail = await LegalApiService.fetchHistoryDetail(item.analysisId);
-        const c1 = transformStructureToClauses(detail.doc_a.structure);
-        const c2 = transformStructureToClauses(detail.doc_b.structure);
-        const compiled = LegalApiService.compileClausesWithRelations(c1, c2, detail.relations);
+
+        const docAId =
+          detail.document_a_id ??
+          detail.doc_a?.doc_id ??
+          item.docAId;
+
+        const docBId =
+          detail.document_b_id ??
+          detail.doc_b?.doc_id ??
+          item.docBId;
+
+        // Fetch structures from detail if provided, or from /api/v1/document/{id}/structure
+        let structA: any[] = detail.doc_a?.structure || [];
+        let structB: any[] = detail.doc_b?.structure || [];
+
+        if ((!structA.length || !structB.length) && docAId && docBId) {
+          const [fetchedA, fetchedB] = await Promise.allSettled([
+            !structA.length ? LegalApiService.getDocumentStructure(docAId) : Promise.resolve(structA),
+            !structB.length ? LegalApiService.getDocumentStructure(docBId) : Promise.resolve(structB),
+          ]);
+          if (fetchedA.status === 'fulfilled' && fetchedA.value) structA = fetchedA.value;
+          if (fetchedB.status === 'fulfilled' && fetchedB.value) structB = fetchedB.value;
+        }
+
+        const titleA = detail.doc_a?.title || item.doc1Name || (docAId ? `سند ${docAId}` : 'سند اول');
+        const titleB = detail.doc_b?.title || item.doc2Name || (docBId ? `سند ${docBId}` : 'سند دوم');
+
+        const c1 = transformStructureToClauses(structA);
+        const c2 = transformStructureToClauses(structB);
+        const relationsData = detail.relations || [];
+        const compiled = LegalApiService.compileClausesWithRelations(c1, c2, relationsData);
+
+        const displayDate =
+          item.formattedDate ||
+          (detail.created_at ? formatPersianDate(detail.created_at) : '') ||
+          formatPersianTimeAgo(detail.created_at || item.timeAgo);
 
         setDoc1({
-          id: `doc_${detail.doc_a.doc_id}`,
-          docId: detail.doc_a.doc_id,
-          title: detail.doc_a.title,
-          fileName: detail.doc_a.title,
+          id: `doc_${docAId || '1'}`,
+          docId: docAId,
+          title: titleA,
+          fileName: titleA,
           tag: 'سند اول',
-          date: formatPersianTimeAgo(detail.created_at),
+          date: displayDate,
           status: 'ready',
         });
+
         setDoc2({
-          id: `doc_${detail.doc_b.doc_id}`,
-          docId: detail.doc_b.doc_id,
-          title: detail.doc_b.title,
-          fileName: detail.doc_b.title,
+          id: `doc_${docBId || '2'}`,
+          docId: docBId,
+          title: titleB,
+          fileName: titleB,
           tag: 'سند دوم',
-          date: formatPersianTimeAgo(detail.created_at),
+          date: displayDate,
           status: 'ready',
         });
+
         setClausesDoc1(compiled.clausesDoc1);
         setClausesDoc2(compiled.clausesDoc2);
         setRelations(compiled.relations);
-        setActiveAnalysisId(detail.analysis_id);
+        setActiveAnalysisId(detail.analysis_id || item.analysisId);
         setCurrentScreen('compare');
         setIsSidebarOpen(false);
         return;
@@ -226,6 +280,8 @@ export default function App() {
           }}
           onSelectHistoryItem={handleSelectHistoryItem}
           onLogout={handleLogout}
+          isLoadingHistory={isLoadingHistory}
+          onRefreshHistory={refreshHistory}
         />
       )}
 
