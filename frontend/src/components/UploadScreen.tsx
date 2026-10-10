@@ -47,7 +47,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
       let isSubscribed = true;
       const pollDoc1 = async () => {
         let attempts = 0;
-        while (isSubscribed && attempts < 60) {
+        let settled = false;
+        while (isSubscribed && attempts < 60 && !settled) {
           attempts++;
           await new Promise((r) => setTimeout(r, 1500));
           if (!isSubscribed) break;
@@ -57,18 +58,28 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               if (isSubscribed) {
                 setStatusDoc1('done');
                 setDoc1((prev) => (prev ? { ...prev, structureStatus: 'done', status: 'ready' } : prev));
+                setUploadError(null);
               }
-              break;
+              settled = true;
             } else if (check.structure_status === 'failed') {
               if (isSubscribed) {
                 setStatusDoc1('failed');
-                setUploadError('ساختاردهی سند اول با خطا مواجه شد.');
+                setUploadError('ساختاردهی سند اول با خطا مواجه شد. جزئیات خطا در لاگ سرور ثبت شده است.');
               }
-              break;
+              settled = true;
             }
-          } catch (err) {
+          } catch (err: any) {
             console.warn('Doc 1 polling error:', err);
+            if (isSubscribed) {
+              setUploadError(err?.message || 'خطا در بررسی وضعیت سند اول از سرور');
+            }
           }
+        }
+        if (isSubscribed && !settled) {
+          setStatusDoc1('failed');
+          setUploadError(
+            'زمان انتظار برای ساخت پایگاه داده سند اول به پایان رسید. لطفاً فایل را حذف و دوباره بارگذاری کنید.'
+          );
         }
       };
       pollDoc1();
@@ -84,7 +95,8 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
       let isSubscribed = true;
       const pollDoc2 = async () => {
         let attempts = 0;
-        while (isSubscribed && attempts < 60) {
+        let settled = false;
+        while (isSubscribed && attempts < 60 && !settled) {
           attempts++;
           await new Promise((r) => setTimeout(r, 1500));
           if (!isSubscribed) break;
@@ -94,18 +106,28 @@ export const UploadScreen: React.FC<UploadScreenProps> = ({
               if (isSubscribed) {
                 setStatusDoc2('done');
                 setDoc2((prev) => (prev ? { ...prev, structureStatus: 'done', status: 'ready' } : prev));
+                setUploadError(null);
               }
-              break;
+              settled = true;
             } else if (check.structure_status === 'failed') {
               if (isSubscribed) {
                 setStatusDoc2('failed');
-                setUploadError('ساختاردهی سند دوم با خطا مواجه شد.');
+                setUploadError('ساختاردهی سند دوم با خطا مواجه شد. جزئیات خطا در لاگ سرور ثبت شده است.');
               }
-              break;
+              settled = true;
             }
-          } catch (err) {
+          } catch (err: any) {
             console.warn('Doc 2 polling error:', err);
+            if (isSubscribed) {
+              setUploadError(err?.message || 'خطا در بررسی وضعیت سند دوم از سرور');
+            }
           }
+        }
+        if (isSubscribed && !settled) {
+          setStatusDoc2('failed');
+          setUploadError(
+            'زمان انتظار برای ساخت پایگاه داده سند دوم به پایان رسید. لطفاً فایل را حذف و دوباره بارگذاری کنید.'
+          );
         }
       };
       pollDoc2();
